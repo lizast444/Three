@@ -1,22 +1,26 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Three Bearings SDT Socratic Tracker API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: checkins
+    description: Daily check-in operations
+  - name: library
+    description: Socratic library operations
+  - name: insights
+    description: Analytics and insights
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +28,146 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /checkins:
+    get:
+      operationId: getCheckins
+      tags: [checkins]
+      summary: Get all check-ins
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 30
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of check-ins
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Checkin"
+    post:
+      operationId: createCheckin
+      tags: [checkins]
+      summary: Create or update today's check-in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCheckinRequest"
+      responses:
+        "200":
+          description: Created/updated check-in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Checkin"
+
+  /checkins/today:
+    get:
+      operationId: getTodayCheckin
+      tags: [checkins]
+      summary: Get today's check-in if it exists
+      responses:
+        "200":
+          description: Today's check-in or null
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckinOrNull"
+
+  /checkins/{id}:
+    get:
+      operationId: getCheckin
+      tags: [checkins]
+      summary: Get a check-in by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Check-in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Checkin"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /library/notes:
+    get:
+      operationId: getLibraryNotes
+      tags: [library]
+      summary: Get all library notes
+      parameters:
+        - in: query
+          name: category
+          schema:
+            type: string
+            enum: [autonomy, competence, relatedness, universal]
+      responses:
+        "200":
+          description: Library notes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LibraryNote"
+    post:
+      operationId: createLibraryNote
+      tags: [library]
+      summary: Save a library note
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLibraryNoteRequest"
+      responses:
+        "200":
+          description: Created library note
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryNote"
+
+  /insights/stats:
+    get:
+      operationId: getInsightStats
+      tags: [insights]
+      summary: Get aggregated stats for insights
+      parameters:
+        - in: query
+          name: days
+          schema:
+            type: integer
+            default: 7
+            enum: [7, 14, 30]
+      responses:
+        "200":
+          description: Insight statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InsightStats"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +178,195 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    Checkin:
+      type: object
+      properties:
+        id:
+          type: integer
+        date:
+          type: string
+          format: date
+        autonomyScore:
+          type: integer
+          minimum: 0
+          maximum: 10
+        competenceScore:
+          type: integer
+          minimum: 0
+          maximum: 10
+        relatednessScore:
+          type: integer
+          minimum: 0
+          maximum: 10
+        note:
+          type: string
+          nullable: true
+        noteTags:
+          type: array
+          items:
+            type: string
+        microAction:
+          type: string
+          nullable: true
+        microActionSphere:
+          type: string
+          nullable: true
+          enum: [autonomy, competence, relatedness, null]
+        deepDiveAnswers:
+          type: object
+          nullable: true
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - date
+        - autonomyScore
+        - competenceScore
+        - relatednessScore
+        - noteTags
+        - createdAt
+        - updatedAt
+
+    CheckinOrNull:
+      oneOf:
+        - $ref: "#/components/schemas/Checkin"
+        - type: "null"
+
+    CreateCheckinRequest:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        autonomyScore:
+          type: integer
+          minimum: 0
+          maximum: 10
+        competenceScore:
+          type: integer
+          minimum: 0
+          maximum: 10
+        relatednessScore:
+          type: integer
+          minimum: 0
+          maximum: 10
+        note:
+          type: string
+          nullable: true
+        noteTags:
+          type: array
+          items:
+            type: string
+        microAction:
+          type: string
+          nullable: true
+        microActionSphere:
+          type: string
+          nullable: true
+        deepDiveAnswers:
+          type: object
+          nullable: true
+          additionalProperties: true
+      required:
+        - date
+        - autonomyScore
+        - competenceScore
+        - relatednessScore
+        - noteTags
+
+    LibraryNote:
+      type: object
+      properties:
+        id:
+          type: integer
+        category:
+          type: string
+          enum: [autonomy, competence, relatedness, universal]
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - category
+        - content
+        - createdAt
+
+    CreateLibraryNoteRequest:
+      type: object
+      properties:
+        category:
+          type: string
+          enum: [autonomy, competence, relatedness, universal]
+        content:
+          type: string
+      required:
+        - category
+        - content
+
+    InsightStats:
+      type: object
+      properties:
+        checkins:
+          type: array
+          items:
+            $ref: "#/components/schemas/Checkin"
+        peaks:
+          type: array
+          items:
+            $ref: "#/components/schemas/PeakDay"
+        whatWorked:
+          type: array
+          items:
+            $ref: "#/components/schemas/WhatWorked"
+      required:
+        - checkins
+        - peaks
+        - whatWorked
+
+    PeakDay:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        sphere:
+          type: string
+          enum: [autonomy, competence, relatedness]
+        score:
+          type: integer
+        note:
+          type: string
+          nullable: true
+      required:
+        - date
+        - sphere
+        - score
+
+    WhatWorked:
+      type: object
+      properties:
+        sphere:
+          type: string
+          enum: [autonomy, competence, relatedness]
+        microActions:
+          type: array
+          items:
+            type: string
+      required:
+        - sphere
+        - microActions

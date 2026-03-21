@@ -1,0 +1,13 @@
+packages:
+  "framer-motion": "For smooth, premium page transitions and micro-interactions"
+  "recharts": "For the insights and analytics charting"
+  "date-fns": "For elegant date formatting in Russian locale"
+  "clsx": "Utility for conditionally joining classNames"
+  "tailwind-merge": "Utility for merging tailwind classes"
+
+images: []
+
+notes:
+  - "Using provided @workspace/api-client-react for TanStack Query hooks"
+  - "App is mobile-first, designed like a premium journaling app (max-w-xl container)"
+  - "Wouter is used for routing, no nested anchor tags"
