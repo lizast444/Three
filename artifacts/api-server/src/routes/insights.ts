@@ -46,11 +46,13 @@ router.get("/stats", async (req, res) => {
       .slice(0, 3);
 
     for (const day of topDays) {
+      const dda = (day.deepDiveAnswers as Record<string, string> | null) ?? {};
+      const sphereAnswer = dda[`${sphere}_answer`] || null;
       peaks.push({
         date: day.date,
         sphere,
         score: day[scoreKey],
-        note: day.note,
+        note: sphereAnswer ?? day.note,
       });
     }
   }

@@ -49,6 +49,7 @@ export default function CheckinPage() {
 
   // State
   const [scores, setScores] = useState({ autonomy: 5, competence: 5, relatedness: 5 });
+  const [sphereAnswers, setSphereAnswers] = useState({ autonomy: "", competence: "", relatedness: "" });
   const [note, setNote] = useState("");
   const [noteTags, setNoteTags] = useState<string[]>([]);
   const [microAction, setMicroAction] = useState("");
@@ -74,12 +75,24 @@ export default function CheckinPage() {
         setMicroActionSphere(todayCheckin.microActionSphere as any);
       }
       if (todayCheckin.deepDiveAnswers) {
-        setDeepDiveAnswers(todayCheckin.deepDiveAnswers as Record<string, string>);
+        const dda = todayCheckin.deepDiveAnswers as Record<string, string>;
+        setDeepDiveAnswers(dda);
+        setSphereAnswers({
+          autonomy: dda["autonomy_answer"] || "",
+          competence: dda["competence_answer"] || "",
+          relatedness: dda["relatedness_answer"] || "",
+        });
       }
     }
   }, [todayCheckin]);
 
   const handleSave = () => {
+    const mergedDeepDive = {
+      ...deepDiveAnswers,
+      autonomy_answer: sphereAnswers.autonomy,
+      competence_answer: sphereAnswers.competence,
+      relatedness_answer: sphereAnswers.relatedness,
+    };
     createCheckin.mutate({
       data: {
         date: todayDate,
@@ -90,7 +103,7 @@ export default function CheckinPage() {
         noteTags: noteTags,
         microAction: microAction,
         microActionSphere: microActionSphere || null,
-        deepDiveAnswers: deepDiveAnswers,
+        deepDiveAnswers: mergedDeepDive,
       }
     });
   };
@@ -176,6 +189,14 @@ export default function CheckinPage() {
               <div className="text-[1.05rem] leading-relaxed font-serif text-foreground/90 italic pl-1">
                 "{question}"
               </div>
+
+              <Textarea
+                placeholder="Мой ответ..."
+                rows={3}
+                className="resize-none bg-background/70 border-border/60 rounded-xl text-sm leading-relaxed placeholder:text-muted-foreground/50 focus-visible:ring-1 focus-visible:ring-primary/30"
+                value={sphereAnswers[key]}
+                onChange={(e) => setSphereAnswers(prev => ({ ...prev, [key]: e.target.value }))}
+              />
 
               <div className="space-y-3 pt-2">
                 <div className="flex justify-between items-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
