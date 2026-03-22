@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { BookOpen, BarChart2, CheckCircle2 } from "lucide-react";
+import { BookOpen, BarChart2, CheckCircle2, CalendarDays } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from "clsx";
 
@@ -9,6 +9,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const navItems = [
     { href: "/", label: "Сегодня", icon: CheckCircle2 },
     { href: "/library", label: "Библиотека", icon: BookOpen },
+    { href: "/journal", label: "Журнал", icon: CalendarDays },
     { href: "/insights", label: "Аналитика", icon: BarChart2 },
   ];
 
