@@ -7,6 +7,7 @@ import CheckinPage from "@/pages/checkin";
 import LibraryPage from "@/pages/library";
 import InsightsPage from "@/pages/insights";
 import JournalPage from "@/pages/journal";
+import SettingsPage from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -26,6 +27,7 @@ function Router() {
         <Route path="/library" component={LibraryPage} />
         <Route path="/insights" component={InsightsPage} />
         <Route path="/journal" component={JournalPage} />
+        <Route path="/settings" component={SettingsPage} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

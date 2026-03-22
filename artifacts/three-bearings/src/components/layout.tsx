@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { BookOpen, BarChart2, CheckCircle2, CalendarDays } from "lucide-react";
+import { BookOpen, BarChart2, CheckCircle2, CalendarDays, SlidersHorizontal } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from "clsx";
 
@@ -11,6 +11,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     { href: "/library", label: "Библиотека", icon: BookOpen },
     { href: "/journal", label: "Журнал", icon: CalendarDays },
     { href: "/insights", label: "Аналитика", icon: BarChart2 },
+    { href: "/settings", label: "Оснастка", icon: SlidersHorizontal },
   ];
 
   return (
@@ -32,7 +33,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-t border-border/50 safe-area-pb">
-        <div className="flex items-center justify-around px-2 h-16">
+        <div className="flex items-center justify-around px-1 h-16">
           {navItems.map((item) => {
             const isActive = location === item.href;
             const Icon = item.icon;
@@ -41,16 +42,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 key={item.href} 
                 href={item.href}
                 className={clsx(
-                  "relative flex flex-col items-center justify-center w-16 h-full space-y-1 text-xs font-medium transition-colors duration-300",
+                  "relative flex flex-col items-center justify-center flex-1 h-full gap-0.5 font-medium transition-colors duration-300",
                   isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                <Icon className={clsx("w-5 h-5", isActive ? "stroke-2" : "stroke-[1.5]")} />
-                <span>{item.label}</span>
+                <Icon className={clsx("w-[18px] h-[18px]", isActive ? "stroke-2" : "stroke-[1.5]")} />
+                <span className="text-[9.5px] leading-none">{item.label}</span>
                 {isActive && (
                   <motion.div
                     layoutId="bottom-nav-indicator"
-                    className="absolute -top-px left-2 right-2 h-0.5 bg-primary rounded-b-full"
+                    className="absolute -top-px left-1 right-1 h-0.5 bg-primary rounded-b-full"
                     transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                   />
                 )}
