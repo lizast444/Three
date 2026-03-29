@@ -1,7 +1,7 @@
 import { useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { BookOpen, BarChart2, CheckCircle2, CalendarDays, SlidersHorizontal } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { clsx } from "clsx";
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -31,18 +31,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
         className="flex-1 overflow-y-auto overscroll-contain pb-20 md:pb-0"
       >
         <main className="w-full max-w-xl mx-auto md:py-8 px-4 sm:px-6 relative">
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={location}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-              className="w-full"
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
+          <div className="w-full">
+            {children}
+          </div>
         </main>
       </div>
 
