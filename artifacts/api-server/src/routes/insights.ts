@@ -36,8 +36,11 @@ router.get("/stats", async (req, res) => {
   const spheres = ["autonomy", "competence", "relatedness"] as const;
   const peakThreshold = 8;
 
-  // Collect all candidate peaks, then deduplicate by date (keep highest score per date)
-  const allPeaks: { date: string; sphere: string; score: number; note: string | null }[] = [];
+  // Collect all candidate peaks, deduplicate by date (keep highest score per date)
+  const allPeaks: {
+    date: string; sphere: string; score: number;
+    note: string | null; noteTags: string[];
+  }[] = [];
 
   for (const sphere of spheres) {
     const scoreKey = `${sphere}Score` as "autonomyScore" | "competenceScore" | "relatednessScore";
@@ -47,27 +50,16 @@ router.get("/stats", async (req, res) => {
       .slice(0, 5);
 
     for (const day of topDays) {
-      const dda = (day.deepDiveAnswers as Record<string, unknown> | null) ?? {};
-
-      // New array format: autonomy_answers: [{question, answer}]
-      const sphereAnswersArr = dda[`${sphere}_answers`] as Array<{ question: string; answer: string }> | undefined;
-      const sphereAnswerFromArr = sphereAnswersArr?.find((a) => a.answer?.trim())?.answer ?? null;
-
-      // Old single format: autonomy_answer
-      const sphereAnswerOld = (dda[`${sphere}_answer`] as string | undefined) || null;
-
-      const noteText = sphereAnswerFromArr ?? sphereAnswerOld ?? null;
-
       allPeaks.push({
         date: day.date,
         sphere,
         score: day[scoreKey],
-        note: noteText,
+        note: day.note ?? null,
+        noteTags: day.noteTags ?? [],
       });
     }
   }
 
-  // Deduplicate: one peak per date, keeping the sphere with the highest score
   allPeaks.sort((a, b) => b.score - a.score);
   const seenDates = new Set<string>();
   const peaks = allPeaks.filter((p) => {
@@ -76,22 +68,19 @@ router.get("/stats", async (req, res) => {
     return true;
   }).slice(0, 5);
 
-  const whatWorked: { sphere: string; microActions: string[] }[] = spheres.map((sphere) => {
-    const scoreKey = `${sphere}Score` as "autonomyScore" | "competenceScore" | "relatednessScore";
-    const highScoreDays = checkins.filter(
-      (c) =>
-        c[scoreKey] > 7 &&
-        c.microAction &&
-        // Only show if this microAction was tagged to this sphere (or has no sphere tag)
-        (!c.microActionSphere || c.microActionSphere === sphere)
-    );
-    return {
-      sphere,
-      microActions: [...new Set(highScoreDays.map((c) => c.microAction!).filter(Boolean))],
-    };
-  });
+  // Yesterday reviews: checkins with yesterday_review in deepDiveAnswers
+  const reviews = checkins
+    .map((c) => {
+      const dda = (c.deepDiveAnswers as Record<string, unknown> | null) ?? {};
+      const review = dda["yesterday_review"] as string | undefined;
+      const microActions = dda["micro_actions"] as Array<{ sphere: string; action: string }> | undefined;
+      if (!review?.trim()) return null;
+      return { date: c.date, review, microActions: microActions ?? [] };
+    })
+    .filter(Boolean)
+    .slice(0, 5);
 
-  res.json({ checkins, peaks, whatWorked });
+  res.json({ checkins, peaks, reviews });
 });
 
 export default router;

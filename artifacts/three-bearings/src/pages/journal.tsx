@@ -36,6 +36,8 @@ interface LocalDay {
   note_tags?: string[];
   micro_action?: string;
   micro_action_sphere?: string;
+  micro_actions?: { sphere: string; action: string }[];
+  yesterday_review?: string;
 }
 
 // ── LocalStorage helpers ──────────────────────────────────────────────────────
@@ -304,32 +306,72 @@ function DayDetail({
                 </section>
               )}
 
-              {/* Micro-action */}
-              {microAction && (
+              {/* Yesterday review */}
+              {(localDay?.yesterday_review || (apiCheckin?.deepDiveAnswers as any)?.yesterday_review) && (
                 <section className="space-y-2">
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Микро-действие
+                    Что сработало из планов
                   </h3>
-                  {microActionSphere && (
-                    <div className="mb-1">
-                      {(() => {
+                  <p className="text-sm text-foreground leading-relaxed bg-amber-50/60 dark:bg-amber-900/10 border border-amber-200/50 dark:border-amber-700/30 rounded-xl px-4 py-3 whitespace-pre-wrap italic">
+                    {localDay?.yesterday_review || (apiCheckin?.deepDiveAnswers as any)?.yesterday_review}
+                  </p>
+                </section>
+              )}
+
+              {/* Micro-actions (new multi format or old single) */}
+              {(() => {
+                const multiActions = (localDay?.micro_actions as { sphere: string; action: string }[] | undefined)
+                  || ((apiCheckin?.deepDiveAnswers as any)?.micro_actions as { sphere: string; action: string }[] | undefined);
+
+                if (multiActions && multiActions.length > 0) {
+                  return (
+                    <section className="space-y-2">
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Микро-действия на завтра
+                      </h3>
+                      <div className="space-y-2">
+                        {multiActions.map((ma, i) => {
+                          const s = SPHERES[ma.sphere as SphereKey];
+                          if (!s) return null;
+                          const Icon = s.icon;
+                          return (
+                            <div key={i} className={clsx("flex items-start gap-2 px-3 py-2.5 rounded-xl text-sm border", s.lightBgClass, s.borderClass)}>
+                              <Icon className={clsx("w-4 h-4 mt-0.5 shrink-0", s.colorClass)} />
+                              <span className="text-foreground/90 leading-snug">{ma.action}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  );
+                }
+
+                // Old single micro-action fallback
+                if (microAction) {
+                  return (
+                    <section className="space-y-2">
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Микро-действие
+                      </h3>
+                      {microActionSphere && (() => {
                         const s = SPHERES[microActionSphere as SphereKey];
                         if (!s) return null;
                         const Icon = s.icon;
                         return (
-                          <span className={clsx("inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-white", s.bgClass)}>
+                          <span className={clsx("inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-white mb-1", s.bgClass)}>
                             <Icon className="w-3 h-3" />
                             {s.label}
                           </span>
                         );
                       })()}
-                    </div>
-                  )}
-                  <p className="text-sm text-foreground leading-relaxed bg-secondary/40 rounded-xl px-4 py-3 whitespace-pre-wrap">
-                    {microAction}
-                  </p>
-                </section>
-              )}
+                      <p className="text-sm text-foreground leading-relaxed bg-secondary/40 rounded-xl px-4 py-3 whitespace-pre-wrap">
+                        {microAction}
+                      </p>
+                    </section>
+                  );
+                }
+                return null;
+              })()}
             </>
           )}
         </div>
