@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { BookOpen, BarChart2, CheckCircle2, CalendarDays, SlidersHorizontal } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -5,6 +6,10 @@ import { clsx } from "clsx";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [location]);
 
   const navItems = [
     { href: "/", label: "Сегодня", icon: CheckCircle2 },
@@ -17,13 +22,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col pb-24 md:pb-0 overflow-x-hidden selection:bg-primary/20 selection:text-primary">
       <main className="flex-1 w-full max-w-xl mx-auto md:py-8 px-4 sm:px-6 relative">
-        <AnimatePresence mode="sync" initial={false}>
+        <AnimatePresence mode="wait">
           <motion.div
             key={location}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
+            initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: -10, filter: "blur(4px)" }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
             className="w-full h-full"
           >
             {children}
