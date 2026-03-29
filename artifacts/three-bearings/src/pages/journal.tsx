@@ -1,12 +1,15 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval,
   startOfWeek, endOfWeek, isSameDay, isSameMonth, isToday,
-  addMonths, subMonths, parseISO
+  addMonths, subMonths
 } from "date-fns";
 import { ru } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, CalendarDays, X, Wind, Anchor, Users, BookOpen } from "lucide-react";
+import {
+  ChevronLeft, ChevronRight, CalendarDays, X,
+  Wind, Anchor, Users, BookOpen, CalendarCheck
+} from "lucide-react";
 import { SPHERES, LIBRARY_QUESTIONS } from "@/lib/constants";
 import { useGetCheckins } from "@workspace/api-client-react";
 import type { Checkin } from "@workspace/api-client-react";
@@ -14,8 +17,40 @@ import { clsx } from "clsx";
 import { Button } from "@/components/ui/button";
 
 const WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
-
 type SphereKey = "autonomy" | "competence" | "relatedness";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface QAnswer { question: string; answer: string; }
+
+interface LocalDay {
+  date: string;
+  autonomy_score?: number;
+  competence_score?: number;
+  relatedness_score?: number;
+  autonomy_answers?: QAnswer[];
+  competence_answers?: QAnswer[];
+  relatedness_answers?: QAnswer[];
+  note?: string;
+  note_tags?: string[];
+  micro_action?: string;
+  micro_action_sphere?: string;
+}
+
+// ── LocalStorage helpers ──────────────────────────────────────────────────────
+
+function loadLocalDays(): LocalDay[] {
+  try {
+    const raw = localStorage.getItem("tb_days");
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    console.log("[Journal] tb_days loaded:", parsed);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    console.error("[Journal] Failed to parse tb_days:", e);
+    return [];
+  }
+}
 
 function loadDeepDive(date: string, sphere: SphereKey): Record<number, string> {
   try {
@@ -24,7 +59,7 @@ function loadDeepDive(date: string, sphere: SphereKey): Record<number, string> {
   } catch { return {}; }
 }
 
-// ── Score Bar ────────────────────────────────────────────────────────────────
+// ── Score Bar ─────────────────────────────────────────────────────────────────
 
 function ScoreBar({ label, value, colorClass, bgClass }: {
   label: string; value: number; colorClass: string; bgClass: string;
@@ -47,40 +82,67 @@ function ScoreBar({ label, value, colorClass, bgClass }: {
   );
 }
 
-// ── Day Detail Panel ─────────────────────────────────────────────────────────
+// ── Day Detail Panel ──────────────────────────────────────────────────────────
 
-function DayDetail({ checkin, date, onClose }: {
-  checkin: Checkin | null;
+function DayDetail({
+  localDay, apiCheckin, date, onClose,
+}: {
+  localDay: LocalDay | null;
+  apiCheckin: Checkin | null;
   date: Date;
   onClose: () => void;
 }) {
   const dateStr = format(date, "yyyy-MM-dd");
-  const deepDiveAutonomy = loadDeepDive(dateStr, "autonomy");
-  const deepDiveCompetence = loadDeepDive(dateStr, "competence");
-  const deepDiveRelatedness = loadDeepDive(dateStr, "relatedness");
 
-  const hasDeepdive = (obj: Record<number, string>) =>
-    Object.values(obj).some(v => v.trim());
-
-  const dda = checkin?.deepDiveAnswers as Record<string, string> | null ?? {};
-
-  const sphereData: { key: SphereKey; label: string; icon: typeof Wind; colorClass: string; bgClass: string; lightBgClass: string }[] = [
-    { key: "autonomy", label: "Автономия", icon: Wind, colorClass: SPHERES.autonomy.colorClass, bgClass: SPHERES.autonomy.bgClass, lightBgClass: SPHERES.autonomy.lightBgClass },
-    { key: "competence", label: "Компетентность", icon: Anchor, colorClass: SPHERES.competence.colorClass, bgClass: SPHERES.competence.bgClass, lightBgClass: SPHERES.competence.lightBgClass },
-    { key: "relatedness", label: "Связанность", icon: Users, colorClass: SPHERES.relatedness.colorClass, bgClass: SPHERES.relatedness.bgClass, lightBgClass: SPHERES.relatedness.lightBgClass },
-  ];
-
+  // Deep-dive (always from localStorage keys)
   const deepDiveMap: Record<SphereKey, Record<number, string>> = {
-    autonomy: deepDiveAutonomy,
-    competence: deepDiveCompetence,
-    relatedness: deepDiveRelatedness,
+    autonomy: loadDeepDive(dateStr, "autonomy"),
+    competence: loadDeepDive(dateStr, "competence"),
+    relatedness: loadDeepDive(dateStr, "relatedness"),
   };
 
-  const scores: Record<SphereKey, number> = checkin ? {
-    autonomy: checkin.autonomyScore,
-    competence: checkin.competenceScore,
-    relatedness: checkin.relatednessScore,
-  } : { autonomy: 0, competence: 0, relatedness: 0 };
+  const hasDeepdive = (m: Record<number, string>) =>
+    Object.values(m).some(v => v.trim());
+
+  // Merge: localStorage wins, then API fallback
+  const scores: Record<SphereKey, number> = {
+    autonomy: localDay?.autonomy_score ?? apiCheckin?.autonomyScore ?? 0,
+    competence: localDay?.competence_score ?? apiCheckin?.competenceScore ?? 0,
+    relatedness: localDay?.relatedness_score ?? apiCheckin?.relatednessScore ?? 0,
+  };
+
+  const note = localDay?.note ?? apiCheckin?.note ?? "";
+  const noteTags = localDay?.note_tags ?? apiCheckin?.noteTags ?? [];
+  const microAction = localDay?.micro_action ?? apiCheckin?.microAction ?? "";
+  const microActionSphere = localDay?.micro_action_sphere ?? apiCheckin?.microActionSphere ?? "";
+
+  // Get answers array for sphere (localStorage new format → API new format → API old single format)
+  const getAnswers = (sphere: SphereKey): QAnswer[] => {
+    // localStorage new format
+    const localArr = localDay?.[`${sphere}_answers` as keyof LocalDay] as QAnswer[] | undefined;
+    if (localArr && localArr.length > 0) return localArr;
+
+    // API deep dive answers
+    if (apiCheckin?.deepDiveAnswers) {
+      const dda = apiCheckin.deepDiveAnswers as Record<string, unknown>;
+      // New array format in API
+      const apiArr = dda[`${sphere}_answers`] as QAnswer[] | undefined;
+      if (apiArr && apiArr.length > 0) return apiArr;
+      // Old single-item format in API
+      const q = dda[`${sphere}_question`] as string | undefined;
+      const a = dda[`${sphere}_answer`] as string | undefined;
+      if (q || a) return [{ question: q ?? "", answer: a ?? "" }];
+    }
+    return [];
+  };
+
+  const hasAnyData = localDay || apiCheckin;
+
+  const sphereData = [
+    { key: "autonomy" as SphereKey, label: "Автономия", icon: Wind },
+    { key: "competence" as SphereKey, label: "Компетентность", icon: Anchor },
+    { key: "relatedness" as SphereKey, label: "Связанность", icon: Users },
+  ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
@@ -103,78 +165,95 @@ function DayDetail({ checkin, date, onClose }: {
               {format(date, "EEEE", { locale: ru })}
             </p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
-          {!checkin ? (
-            <div className="py-16 text-center text-muted-foreground/60 font-medium">
-              Нет записей за этот день
+          {!hasAnyData ? (
+            <div className="py-16 text-center space-y-2">
+              <CalendarCheck className="w-10 h-10 text-muted-foreground/30 mx-auto" />
+              <p className="text-muted-foreground/60 font-medium">Нет записей на этот день</p>
             </div>
           ) : (
             <>
               {/* Scores */}
               <section className="space-y-3">
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Оценки потребностей</h3>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Оценки потребностей
+                </h3>
                 <div className="space-y-3 bg-secondary/40 rounded-2xl p-4">
                   {sphereData.map(s => (
                     <ScoreBar
                       key={s.key}
                       label={s.label}
                       value={scores[s.key]}
-                      colorClass={s.colorClass}
-                      bgClass={s.bgClass}
+                      colorClass={SPHERES[s.key].colorClass}
+                      bgClass={SPHERES[s.key].bgClass}
                     />
                   ))}
                 </div>
               </section>
 
-              {/* Per-sphere questions & answers */}
+              {/* Per-sphere Q&As */}
               {sphereData.map(s => {
-                const question = dda[`${s.key}_question`];
-                const answer = dda[`${s.key}_answer`];
+                const answers = getAnswers(s.key);
                 const deepDive = deepDiveMap[s.key];
-                const deepDiveFilled = Object.entries(deepDive).filter(([, v]) => v.trim());
+                const deepFilled = Object.entries(deepDive).filter(([, v]) => v.trim());
                 const Icon = s.icon;
+                const sphere = SPHERES[s.key];
 
-                if (!question && !answer && deepDiveFilled.length === 0) return null;
+                if (answers.length === 0 && deepFilled.length === 0) return null;
 
                 return (
                   <section key={s.key} className="space-y-3">
+                    {/* Sphere header */}
                     <div className="flex items-center gap-2">
-                      <div className={clsx("p-1.5 rounded-lg", s.lightBgClass, s.colorClass)}>
+                      <div className={clsx("p-1.5 rounded-lg", sphere.lightBgClass, sphere.colorClass)}>
                         <Icon className="w-3.5 h-3.5" />
                       </div>
                       <h3 className="text-sm font-semibold">{s.label}</h3>
                     </div>
 
-                    {question && (
-                      <div className="space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Вопрос дня</p>
-                        <p className="text-sm font-serif italic text-foreground/80 leading-relaxed bg-secondary/40 rounded-xl px-3 py-2.5">
-                          "{question}"
+                    {/* Rotation answers (new multi-answer format) */}
+                    {answers.length > 0 && (
+                      <div className="space-y-3">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                          {answers.length > 1 ? `Вопросы и ответы (${answers.length})` : "Вопрос дня"}
                         </p>
-                        {answer && (
-                          <p className="text-sm text-foreground leading-relaxed px-1 whitespace-pre-wrap">
-                            {answer}
-                          </p>
-                        )}
+                        {answers.map((qa, i) => (
+                          <div key={i} className="space-y-1.5">
+                            {qa.question && (
+                              <p className="text-sm font-serif italic text-foreground/75 leading-relaxed bg-secondary/30 rounded-xl px-3 py-2.5">
+                                "{qa.question}"
+                              </p>
+                            )}
+                            {qa.answer && (
+                              <p className="text-sm text-foreground leading-relaxed px-1 whitespace-pre-wrap">
+                                {qa.answer}
+                              </p>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     )}
 
-                    {deepDiveFilled.length > 0 && (
-                      <div className="space-y-3">
+                    {/* Deep dive */}
+                    {deepFilled.length > 0 && (
+                      <div className="space-y-3 pt-1">
                         <div className="flex items-center gap-1.5">
-                          <BookOpen className={clsx("w-3.5 h-3.5", s.colorClass)} />
+                          <BookOpen className={clsx("w-3.5 h-3.5", sphere.colorClass)} />
                           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                            Глубокий разбор ({deepDiveFilled.length})
+                            Глубокий разбор ({deepFilled.length})
                           </p>
                         </div>
-                        <div className="space-y-3">
-                          {deepDiveFilled.map(([idxStr, ans]) => {
+                        <div className="space-y-2">
+                          {deepFilled.map(([idxStr, ans]) => {
                             const idx = parseInt(idxStr);
                             const qItem = LIBRARY_QUESTIONS[s.key]?.[idx];
                             return (
@@ -198,12 +277,14 @@ function DayDetail({ checkin, date, onClose }: {
               })}
 
               {/* Note */}
-              {checkin.note && (
+              {note && (
                 <section className="space-y-2">
-                  <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Заметка дня</h3>
-                  {checkin.noteTags?.length > 0 && (
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Заметка дня
+                  </h3>
+                  {noteTags.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mb-2">
-                      {checkin.noteTags.map(tag => {
+                      {noteTags.map(tag => {
                         const s = SPHERES[tag as SphereKey];
                         if (!s) return null;
                         const Icon = s.icon;
@@ -217,23 +298,25 @@ function DayDetail({ checkin, date, onClose }: {
                     </div>
                   )}
                   <p className="text-sm text-foreground leading-relaxed bg-secondary/40 rounded-xl px-4 py-3 whitespace-pre-wrap">
-                    {checkin.note}
+                    {note}
                   </p>
                 </section>
               )}
 
               {/* Micro-action */}
-              {checkin.microAction && (
+              {microAction && (
                 <section className="space-y-2">
-                  <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Микро-действие</h3>
-                  {checkin.microActionSphere && (
-                    <div className="flex items-center gap-1.5 mb-1">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Микро-действие
+                  </h3>
+                  {microActionSphere && (
+                    <div className="mb-1">
                       {(() => {
-                        const s = SPHERES[checkin.microActionSphere as SphereKey];
+                        const s = SPHERES[microActionSphere as SphereKey];
                         if (!s) return null;
                         const Icon = s.icon;
                         return (
-                          <span className={clsx("flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-white", s.bgClass)}>
+                          <span className={clsx("inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-white", s.bgClass)}>
                             <Icon className="w-3 h-3" />
                             {s.label}
                           </span>
@@ -242,7 +325,7 @@ function DayDetail({ checkin, date, onClose }: {
                     </div>
                   )}
                   <p className="text-sm text-foreground leading-relaxed bg-secondary/40 rounded-xl px-4 py-3 whitespace-pre-wrap">
-                    {checkin.microAction}
+                    {microAction}
                   </p>
                 </section>
               )}
@@ -260,20 +343,42 @@ function DayDetail({ checkin, date, onClose }: {
   );
 }
 
-// ── Calendar ─────────────────────────────────────────────────────────────────
+// ── Calendar Page ─────────────────────────────────────────────────────────────
 
 export default function JournalPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [localDays, setLocalDays] = useState<LocalDay[]>([]);
 
+  // Load localStorage data on mount
+  useEffect(() => {
+    const days = loadLocalDays();
+    setLocalDays(days);
+  }, []);
+
+  // API data (for stats and legacy support)
   const { data: checkinsData } = useGetCheckins({ limit: 500 });
-  const checkins = checkinsData?.checkins ?? [];
+  const apiCheckins = checkinsData?.checkins ?? [];
 
-  const checkinMap = useMemo(() => {
-    const map: Record<string, Checkin> = {};
-    for (const c of checkins) map[c.date] = c;
-    return map;
-  }, [checkins]);
+  const localDayMap = useMemo(() => {
+    const m: Record<string, LocalDay> = {};
+    for (const d of localDays) m[d.date] = d;
+    return m;
+  }, [localDays]);
+
+  const apiCheckinMap = useMemo(() => {
+    const m: Record<string, Checkin> = {};
+    for (const c of apiCheckins) m[c.date] = c;
+    return m;
+  }, [apiCheckins]);
+
+  // Union of all dates that have any data
+  const allDates = useMemo(() => {
+    const s = new Set<string>();
+    for (const d of localDays) s.add(d.date);
+    for (const c of apiCheckins) s.add(c.date);
+    return s;
+  }, [localDays, apiCheckins]);
 
   const calendarDays = useMemo(() => {
     const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 1 });
@@ -282,9 +387,7 @@ export default function JournalPage() {
   }, [currentMonth]);
 
   const hasNote = (dateStr: string) => {
-    const c = checkinMap[dateStr];
-    if (!c) return false;
-    return !!(c.note?.trim());
+    return !!(localDayMap[dateStr]?.note?.trim() || apiCheckinMap[dateStr]?.note?.trim());
   };
 
   const hasDeepDive = (dateStr: string) => {
@@ -295,9 +398,44 @@ export default function JournalPage() {
     });
   };
 
-  const selectedCheckin = selectedDay
-    ? checkinMap[format(selectedDay, "yyyy-MM-dd")] ?? null
-    : null;
+  const hasAnswers = (dateStr: string) => {
+    const local = localDayMap[dateStr];
+    if (!local) return false;
+    const spheres: SphereKey[] = ["autonomy", "competence", "relatedness"];
+    return spheres.some(s => {
+      const arr = local[`${s}_answers` as keyof LocalDay] as QAnswer[] | undefined;
+      return arr && arr.length > 0 && arr.some(a => a.answer?.trim());
+    });
+  };
+
+  const selectedLocal = selectedDay ? localDayMap[format(selectedDay, "yyyy-MM-dd")] ?? null : null;
+  const selectedApi = selectedDay ? apiCheckinMap[format(selectedDay, "yyyy-MM-dd")] ?? null : null;
+
+  // Stats for current month (merge localStorage + API)
+  const monthStats = useMemo(() => {
+    const monthStr = format(currentMonth, "yyyy-MM");
+    const dates = [...allDates].filter(d => d.startsWith(monthStr));
+    if (dates.length === 0) return null;
+
+    const avg = (key: "autonomy" | "competence" | "relatedness") => {
+      let sum = 0, count = 0;
+      for (const d of dates) {
+        const score = localDayMap[d]?.[`${key}_score` as keyof LocalDay] as number | undefined
+          ?? (apiCheckinMap[d] as any)?.[`${key}Score`];
+        if (typeof score === "number") { sum += score; count++; }
+      }
+      return count > 0 ? (sum / count) : 0;
+    };
+
+    return {
+      count: dates.length,
+      autonomy: avg("autonomy"),
+      competence: avg("competence"),
+      relatedness: avg("relatedness"),
+    };
+  }, [currentMonth, allDates, localDayMap, apiCheckinMap]);
+
+  const notInCurrentMonth = !isSameMonth(currentMonth, new Date());
 
   return (
     <div className="flex flex-col space-y-6 pt-6 pb-12">
@@ -323,10 +461,18 @@ export default function JournalPage() {
             <ChevronLeft className="w-4 h-4" />
           </button>
 
-          <div className="text-center">
+          <div className="flex items-center gap-3">
             <span className="font-semibold text-base capitalize">
               {format(currentMonth, "LLLL yyyy", { locale: ru })}
             </span>
+            {notInCurrentMonth && (
+              <button
+                onClick={() => { setCurrentMonth(new Date()); setSelectedDay(new Date()); }}
+                className="text-xs font-medium text-primary hover:underline"
+              >
+                Сегодня
+              </button>
+            )}
           </div>
 
           <button
@@ -361,21 +507,21 @@ export default function JournalPage() {
               const inMonth = isSameMonth(day, currentMonth);
               const isSelected = selectedDay ? isSameDay(day, selectedDay) : false;
               const isTodayDay = isToday(day);
-              const hasCheckin = !!checkinMap[dateStr];
+              const hasCheckin = allDates.has(dateStr);
               const hasNoteFlag = hasNote(dateStr);
+              const hasAnswersFlag = hasAnswers(dateStr);
               const hasDeepFlag = hasDeepDive(dateStr);
 
               return (
                 <button
                   key={dateStr}
                   onClick={() => {
-                    setSelectedDay(prev =>
-                      prev && isSameDay(prev, day) ? null : day
-                    );
+                    if (!inMonth) return;
+                    setSelectedDay(prev => prev && isSameDay(prev, day) ? null : day);
                   }}
                   className={clsx(
                     "relative flex flex-col items-center justify-center aspect-square rounded-2xl transition-all duration-200 text-sm font-medium mx-0.5",
-                    !inMonth && "opacity-30 pointer-events-none",
+                    !inMonth && "opacity-25 pointer-events-none",
                     isSelected && "bg-primary text-primary-foreground shadow-md",
                     !isSelected && isTodayDay && "border-2 border-primary text-primary",
                     !isSelected && !isTodayDay && hasCheckin && "bg-emerald-500/10 text-foreground hover:bg-emerald-500/20",
@@ -384,13 +530,12 @@ export default function JournalPage() {
                 >
                   <span className="leading-none">{format(day, "d")}</span>
 
-                  {/* Indicators */}
                   {inMonth && (
                     <div className="flex items-center gap-0.5 mt-0.5 h-1.5">
                       {hasCheckin && !isSelected && (
                         <span className="w-1 h-1 rounded-full bg-emerald-500" />
                       )}
-                      {hasNoteFlag && !isSelected && (
+                      {(hasNoteFlag || hasAnswersFlag) && !isSelected && (
                         <span className="text-[7px] leading-none">📝</span>
                       )}
                       {hasDeepFlag && !isSelected && (
@@ -405,14 +550,14 @@ export default function JournalPage() {
         </AnimatePresence>
 
         {/* Legend */}
-        <div className="flex items-center gap-4 px-5 pb-4 text-xs text-muted-foreground">
+        <div className="flex items-center gap-4 px-5 pb-4 text-xs text-muted-foreground flex-wrap">
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
             <span>Чекин</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="text-[10px]">📝</span>
-            <span>Заметка</span>
+            <span>Ответ/заметка</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-primary/60" />
@@ -421,43 +566,21 @@ export default function JournalPage() {
         </div>
       </div>
 
-      {/* Today button */}
-      {!isSameMonth(currentMonth, new Date()) && (
-        <Button
-          variant="outline"
-          onClick={() => { setCurrentMonth(new Date()); setSelectedDay(new Date()); }}
-          className="w-full rounded-2xl h-11"
-        >
-          Сегодня
-        </Button>
-      )}
-
-      {/* Stats for the month */}
-      {checkins.length > 0 && (
+      {/* Month Stats */}
+      {monthStats && (
         <div className="bg-card rounded-3xl p-5 shadow-sm border border-card-border">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3 capitalize">
             {format(currentMonth, "LLLL", { locale: ru })} — статистика
           </h3>
-          {(() => {
-            const monthStr = format(currentMonth, "yyyy-MM");
-            const monthCheckins = checkins.filter(c => c.date.startsWith(monthStr));
-            if (monthCheckins.length === 0) {
-              return <p className="text-sm text-muted-foreground">Нет чекинов в этом месяце</p>;
-            }
-            const avg = (key: "autonomyScore" | "competenceScore" | "relatednessScore") =>
-              (monthCheckins.reduce((s, c) => s + c[key], 0) / monthCheckins.length).toFixed(1);
-            return (
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Чекинов</span>
-                  <span className="font-semibold">{monthCheckins.length}</span>
-                </div>
-                <ScoreBar label="Автономия (avg)" value={parseFloat(avg("autonomyScore"))} colorClass={SPHERES.autonomy.colorClass} bgClass={SPHERES.autonomy.bgClass} />
-                <ScoreBar label="Компетентность (avg)" value={parseFloat(avg("competenceScore"))} colorClass={SPHERES.competence.colorClass} bgClass={SPHERES.competence.bgClass} />
-                <ScoreBar label="Связанность (avg)" value={parseFloat(avg("relatednessScore"))} colorClass={SPHERES.relatedness.colorClass} bgClass={SPHERES.relatedness.bgClass} />
-              </div>
-            );
-          })()}
+          <div className="space-y-3">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Записей</span>
+              <span className="font-semibold">{monthStats.count}</span>
+            </div>
+            <ScoreBar label="Автономия (avg)" value={parseFloat(monthStats.autonomy.toFixed(1))} colorClass={SPHERES.autonomy.colorClass} bgClass={SPHERES.autonomy.bgClass} />
+            <ScoreBar label="Компетентность (avg)" value={parseFloat(monthStats.competence.toFixed(1))} colorClass={SPHERES.competence.colorClass} bgClass={SPHERES.competence.bgClass} />
+            <ScoreBar label="Связанность (avg)" value={parseFloat(monthStats.relatedness.toFixed(1))} colorClass={SPHERES.relatedness.colorClass} bgClass={SPHERES.relatedness.bgClass} />
+          </div>
         </div>
       )}
 
@@ -466,7 +589,8 @@ export default function JournalPage() {
         {selectedDay && (
           <DayDetail
             key={format(selectedDay, "yyyy-MM-dd")}
-            checkin={selectedCheckin}
+            localDay={selectedLocal}
+            apiCheckin={selectedApi}
             date={selectedDay}
             onClose={() => setSelectedDay(null)}
           />

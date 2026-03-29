@@ -7,6 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { clsx } from "clsx";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 const LS_REMINDER_ENABLED = "tb_reminder_enabled";
 const LS_REMINDER_TIME    = "tb_reminder_time";
@@ -64,6 +65,7 @@ function Row({ children, className }: { children: React.ReactNode; className?: s
 
 export default function SettingsPage() {
   const { toast } = useToast();
+  const [, navigate] = useLocation();
 
   // ── Reminder state ──────────────────────────────────────────────────────
   const [reminderEnabled, setReminderEnabled] = useState(() =>
@@ -143,7 +145,9 @@ export default function SettingsPage() {
 
   const handleReset = () => {
     localStorage.clear();
-    window.location.reload();
+    toast({ title: "Все данные удалены", description: "Локальные данные очищены." });
+    setConfirmReset(false);
+    navigate("/");
   };
 
   return (
