@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Settings, Bell, BellOff, Download, Trash2, Info,
-  Wind, Anchor, Users, CheckCircle2, AlertTriangle, Save
+  Settings, Bell, Download, Upload, Trash2, Info,
+  Wind, Anchor, Users, CheckCircle2, AlertTriangle, Save,
+  FileJson, CalendarDays, X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { clsx } from "clsx";
@@ -121,6 +122,79 @@ export default function SettingsPage() {
     toast({ title: "Сохранено", description: reminderEnabled ? `Напоминание установлено на ${reminderTime}` : "Напоминания отключены." });
   };
 
+  // ── Import ──────────────────────────────────────────────────────────────
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const [importPreview, setImportPreview] = useState<{
+    data: Record<string, unknown>;
+    newDays: number;
+    updatedDays: number;
+    totalDays: number;
+  } | null>(null);
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target?.result as string);
+        if (typeof data !== "object" || !data || Array.isArray(data)) throw new Error();
+
+        const importedDays: any[] = Array.isArray(data["tb_days"]) ? data["tb_days"] : [];
+        const existingDays: any[] = (() => {
+          try { return JSON.parse(localStorage.getItem("tb_days") ?? "[]"); } catch { return []; }
+        })();
+        const existingMap = new Map(existingDays.map((d: any) => [d.date, d]));
+
+        let newDays = 0;
+        let updatedDays = 0;
+        for (const d of importedDays) {
+          if (!existingMap.has(d.date)) newDays++;
+          else updatedDays++;
+        }
+
+        setImportPreview({ data, newDays, updatedDays, totalDays: importedDays.length });
+      } catch {
+        toast({ variant: "destructive", title: "Ошибка файла", description: "Файл повреждён или имеет неверный формат." });
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImportConfirm = () => {
+    if (!importPreview) return;
+    try {
+      const { data } = importPreview;
+      const importedDays: any[] = Array.isArray(data["tb_days"]) ? data["tb_days"] : [];
+      const existingDays: any[] = (() => {
+        try { return JSON.parse(localStorage.getItem("tb_days") ?? "[]"); } catch { return []; }
+      })();
+
+      // Merge: imported data overrides existing for same date (imported is considered more complete)
+      const mergedMap = new Map<string, any>();
+      for (const d of existingDays) mergedMap.set(d.date, d);
+      for (const d of importedDays) mergedMap.set(d.date, d);
+      const mergedDays = Array.from(mergedMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+
+      // Apply all non-days keys
+      for (const [key, value] of Object.entries(data)) {
+        if (key === "tb_days") continue;
+        localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
+      }
+      localStorage.setItem("tb_days", JSON.stringify(mergedDays));
+
+      toast({
+        title: "Импорт завершён",
+        description: `Итого в базе: ${mergedDays.length} дней.`,
+      });
+      setImportPreview(null);
+    } catch {
+      toast({ variant: "destructive", title: "Ошибка импорта", description: "Не удалось применить данные." });
+    }
+  };
+
   // ── Export ──────────────────────────────────────────────────────────────
   const handleExport = () => {
     const data: Record<string, unknown> = {};
@@ -223,6 +297,86 @@ export default function SettingsPage() {
             <Download className="w-4 h-4 mr-2" />
             Экспортировать в JSON
           </Button>
+        </div>
+      </Section>
+
+      {/* ── Import ── */}
+      <Section>
+        <SectionHeader icon={Upload} title="Импорт данных" />
+        <div className="px-5 py-4 space-y-3">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Загрузите ранее экспортированный JSON-файл. Новые дни добавятся, совпадающие — обновятся.
+          </p>
+
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".json,application/json"
+            className="hidden"
+            onChange={handleImportFile}
+          />
+
+          <AnimatePresence mode="wait">
+            {!importPreview ? (
+              <motion.div key="select" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <Button
+                  variant="outline"
+                  onClick={() => importInputRef.current?.click()}
+                  className="w-full rounded-xl h-10"
+                >
+                  <FileJson className="w-4 h-4 mr-2" />
+                  Выбрать файл
+                </Button>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="preview"
+                initial={{ opacity: 0, scale: 0.97 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                className="space-y-3 bg-primary/5 border border-primary/20 rounded-2xl p-4"
+              >
+                {/* File stats */}
+                <div className="flex items-center gap-2.5 mb-1">
+                  <FileJson className="w-4 h-4 text-primary shrink-0" />
+                  <p className="text-sm font-semibold text-foreground">Файл готов к импорту</p>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-background rounded-xl px-2 py-2.5 border border-border/60">
+                    <p className="text-lg font-bold text-foreground font-serif">{importPreview.totalDays}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide leading-tight mt-0.5">в файле</p>
+                  </div>
+                  <div className="bg-background rounded-xl px-2 py-2.5 border border-border/60">
+                    <p className="text-lg font-bold text-green-600 dark:text-green-400 font-serif">{importPreview.newDays}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide leading-tight mt-0.5">новых</p>
+                  </div>
+                  <div className="bg-background rounded-xl px-2 py-2.5 border border-border/60">
+                    <p className="text-lg font-bold text-amber-600 dark:text-amber-400 font-serif">{importPreview.updatedDays}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide leading-tight mt-0.5">обновится</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    variant="outline"
+                    onClick={() => setImportPreview(null)}
+                    className="flex-1 rounded-xl h-10 gap-1.5"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    Отмена
+                  </Button>
+                  <Button
+                    onClick={handleImportConfirm}
+                    className="flex-1 rounded-xl h-10 gap-1.5"
+                  >
+                    <CalendarDays className="w-3.5 h-3.5" />
+                    Применить
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </Section>
 
