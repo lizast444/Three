@@ -4,7 +4,9 @@ import { format, subDays } from "date-fns";
 import { ru } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
 import { RefreshCw, Save, ChevronRight, BookOpen, X, List, Plus, Trash2, CheckCheck } from "lucide-react";
-import { SPHERES, SOCRATIC_POOL, INSPIRATION_IDEAS, LIBRARY_QUESTIONS } from "@/lib/constants";
+import { SPHERES, LIBRARY_QUESTIONS } from "@/lib/constants";
+import { SOCRATIC_POOL_I18N, INSPIRATION_IDEAS_I18N } from "@/lib/i18n";
+import { useApp } from "@/contexts/app-context";
 import {
   useGetTodayCheckin,
   useCreateCheckin,

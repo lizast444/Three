@@ -3,10 +3,12 @@ import { Link, useLocation } from "wouter";
 import { BookOpen, BarChart2, CheckCircle2, CalendarDays, SlidersHorizontal } from "lucide-react";
 import { motion } from "framer-motion";
 import { clsx } from "clsx";
+import { useApp } from "@/contexts/app-context";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { T } = useApp();
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -15,11 +17,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }, [location]);
 
   const navItems = [
-    { href: "/", label: "Сегодня", icon: CheckCircle2 },
-    { href: "/library", label: "Библиотека", icon: BookOpen },
-    { href: "/journal", label: "Журнал", icon: CalendarDays },
-    { href: "/insights", label: "Аналитика", icon: BarChart2 },
-    { href: "/settings", label: "Оснастка", icon: SlidersHorizontal },
+    { href: "/", label: T.nav_today, icon: CheckCircle2 },
+    { href: "/library", label: T.nav_library, icon: BookOpen },
+    { href: "/journal", label: T.nav_journal, icon: CalendarDays },
+    { href: "/insights", label: T.nav_analytics, icon: BarChart2 },
+    { href: "/settings", label: T.nav_settings, icon: SlidersHorizontal },
   ];
 
   return (
