@@ -4,8 +4,9 @@ import { BarChart2, TrendingUp, Star, MessageSquareQuote } from "lucide-react";
 import { useGetInsightStats } from "@workspace/api-client-react";
 import { SPHERES } from "@/lib/constants";
 import { format, parseISO } from "date-fns";
-import { ru } from "date-fns/locale";
+import { ru, enUS } from "date-fns/locale";
 import { clsx } from "clsx";
+import { useApp } from "@/contexts/app-context";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
@@ -28,6 +29,8 @@ function loadLocalDays(): LocalDay[] {
 }
 
 export default function InsightsPage() {
+  const { T, lang } = useApp();
+  const dateLocale = lang === "ru" ? ru : enUS;
   const [days, setDays] = useState<7 | 14 | 30>(7);
   const { data: stats, isLoading } = useGetInsightStats({ days: days as any });
 
@@ -59,9 +62,9 @@ export default function InsightsPage() {
         <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-2xl text-primary mb-2">
           <BarChart2 className="w-6 h-6" />
         </div>
-        <h1 className="text-3xl font-serif font-medium text-foreground tracking-tight">Аналитика</h1>
+        <h1 className="text-3xl font-serif font-medium text-foreground tracking-tight">{T.insights_title}</h1>
         <p className="text-muted-foreground text-base leading-relaxed">
-          Паттерны ваших потребностей и моменты ресурса.
+          {T.insights_subtitle}
         </p>
       </header>
 
@@ -78,7 +81,7 @@ export default function InsightsPage() {
                 : "text-muted-foreground hover:text-foreground hover:bg-secondary"
             )}
           >
-            {d} дней
+            {d === 7 ? T.insights_days_7 : d === 14 ? T.insights_days_14 : T.insights_days_30}
           </button>
         ))}
       </div>
@@ -96,7 +99,7 @@ export default function InsightsPage() {
           <div className="bg-card rounded-3xl p-6 shadow-sm border border-card-border space-y-6">
             <h3 className="font-semibold text-lg flex items-center">
               <TrendingUp className="w-5 h-5 mr-2 text-primary" />
-              Динамика состояния
+              {T.insights_chart_title}
             </h3>
 
             <div className="h-64 w-full -ml-4 mt-4">
@@ -126,18 +129,18 @@ export default function InsightsPage() {
                     }}
                     itemStyle={{ fontSize: '13px', fontWeight: 500 }}
                   />
-                  <Line type="monotone" name="Автономия" dataKey="autonomy" stroke="hsl(var(--sphere-autonomy))" strokeWidth={3} dot={{ r: 3, fill: 'hsl(var(--sphere-autonomy))', strokeWidth: 0 }} activeDot={{ r: 5 }} />
-                  <Line type="monotone" name="Компетентность" dataKey="competence" stroke="hsl(var(--sphere-competence))" strokeWidth={3} dot={{ r: 3, fill: 'hsl(var(--sphere-competence))', strokeWidth: 0 }} activeDot={{ r: 5 }} />
-                  <Line type="monotone" name="Связанность" dataKey="relatedness" stroke="hsl(var(--sphere-relatedness))" strokeWidth={3} dot={{ r: 3, fill: 'hsl(var(--sphere-relatedness))', strokeWidth: 0 }} activeDot={{ r: 5 }} />
+                  <Line type="monotone" name={T.sphere_autonomy} dataKey="autonomy" stroke="hsl(var(--sphere-autonomy))" strokeWidth={3} dot={{ r: 3, fill: 'hsl(var(--sphere-autonomy))', strokeWidth: 0 }} activeDot={{ r: 5 }} />
+                  <Line type="monotone" name={T.sphere_competence} dataKey="competence" stroke="hsl(var(--sphere-competence))" strokeWidth={3} dot={{ r: 3, fill: 'hsl(var(--sphere-competence))', strokeWidth: 0 }} activeDot={{ r: 5 }} />
+                  <Line type="monotone" name={T.sphere_relatedness} dataKey="relatedness" stroke="hsl(var(--sphere-relatedness))" strokeWidth={3} dot={{ r: 3, fill: 'hsl(var(--sphere-relatedness))', strokeWidth: 0 }} activeDot={{ r: 5 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
 
             <div className="flex flex-wrap justify-center gap-4 pt-2 border-t border-border/50">
-              {Object.values(SPHERES).map(s => (
+              {(Object.entries(SPHERES) as [SphereKey, typeof SPHERES[SphereKey]][]).map(([key, s]) => (
                 <div key={s.id} className="flex items-center text-xs font-medium text-muted-foreground">
                   <div className={clsx("w-2.5 h-2.5 rounded-full mr-2", s.bgClass)} />
-                  {s.label}
+                  {T[`sphere_${key}` as keyof typeof T] as string}
                 </div>
               ))}
             </div>
@@ -148,7 +151,7 @@ export default function InsightsPage() {
             <div className="space-y-4">
               <h3 className="font-semibold text-lg pl-2 flex items-center">
                 <Star className="w-5 h-5 mr-2 text-amber-500 fill-amber-500" />
-                Пиковые дни (8+)
+                {T.insights_peaks_title}
               </h3>
               <div className="grid grid-cols-1 gap-4">
                 {peaks.map((peak, i) => {
@@ -161,25 +164,29 @@ export default function InsightsPage() {
                       <div className="flex justify-between items-start">
                         <div className="flex items-center space-x-2">
                           <sphere.icon className={clsx("w-4 h-4", sphere.colorClass)} />
-                          <span className="text-sm font-semibold">{sphere.label}</span>
+                          <span className="text-sm font-semibold">{T[`sphere_${peak.sphere}` as keyof typeof T] as string}</span>
                           <span className={clsx("text-2xl font-bold font-serif leading-none ml-1", sphere.colorClass)}>
                             {peak.score}
                           </span>
                         </div>
                         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          {format(parseISO(peak.date), "d MMM", { locale: ru })}
+                          {format(parseISO(peak.date), "d MMM", { locale: dateLocale })}
                         </span>
                       </div>
 
                       {/* Tags */}
                       {tags.length > 0 && (
                         <div className="flex flex-wrap gap-1.5">
-                          {tags.map(s => (
-                            <span key={s.id} className={clsx("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-white", s.bgClass)}>
-                              <s.icon className="w-3 h-3" />
-                              {s.label}
-                            </span>
-                          ))}
+                          {(peak.noteTags ?? []).map(t => {
+                            const s = SPHERES[t as SphereKey];
+                            if (!s) return null;
+                            return (
+                              <span key={s.id} className={clsx("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-white", s.bgClass)}>
+                                <s.icon className="w-3 h-3" />
+                                {T[`sphere_${t}` as keyof typeof T] as string}
+                              </span>
+                            );
+                          })}
                         </div>
                       )}
 
@@ -201,7 +208,7 @@ export default function InsightsPage() {
             <div className="space-y-4">
               <h3 className="font-semibold text-lg pl-2 flex items-center">
                 <MessageSquareQuote className="w-5 h-5 mr-2 text-primary" />
-                Что помогло из планов
+                {T.insights_reviews_title}
               </h3>
               <div className="bg-card rounded-3xl p-6 shadow-sm border border-card-border space-y-5">
                 {recentReviews.map((day, i) => {
@@ -213,7 +220,7 @@ export default function InsightsPage() {
                   return (
                     <div key={i} className="space-y-2 pb-4 border-b border-border/40 last:pb-0 last:border-b-0">
                       <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        {format(parseISO(day.date), "d MMMM", { locale: ru })}
+                        {format(parseISO(day.date), "d MMMM", { locale: dateLocale })}
                       </span>
 
                       {/* Planned actions context */}

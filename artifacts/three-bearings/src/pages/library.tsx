@@ -6,10 +6,11 @@ import { clsx } from "clsx";
 import { useGetLibraryNotes, useCreateLibraryNote, getGetLibraryNotesQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { ru } from "date-fns/locale";
+import { ru, enUS } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useApp } from "@/contexts/app-context";
 
 const ALL_CATEGORIES = {
   ...SPHERES,
@@ -32,12 +33,14 @@ function QuestionCard({
   index,
   colorClass,
   bgClass,
+  hintsLabel,
 }: {
   question: string;
   hints: string[];
   index: number;
   colorClass: string;
   bgClass: string;
+  hintsLabel: string;
 }) {
   const [hintsOpen, setHintsOpen] = useState(false);
 
@@ -64,7 +67,7 @@ function QuestionCard({
             )}
           >
             <Lightbulb className="w-3.5 h-3.5" />
-            <span>Подсказка</span>
+            <span>{hintsLabel}</span>
             <ChevronDown
               className={clsx("w-3 h-3 transition-transform duration-200", hintsOpen && "rotate-180")}
             />
@@ -101,6 +104,8 @@ function QuestionCard({
 
 export default function LibraryPage() {
   const { toast } = useToast();
+  const { T, lang } = useApp();
+  const dateLocale = lang === "ru" ? ru : enUS;
   const queryClient = useQueryClient();
   const [activeCategory, setActiveCategory] = useState<CategoryKey>("autonomy");
   const [noteContent, setNoteContent] = useState("");
@@ -112,7 +117,7 @@ export default function LibraryPage() {
       onSuccess: () => {
         setNoteContent("");
         queryClient.invalidateQueries({ queryKey: getGetLibraryNotesQueryKey() });
-        toast({ title: "Сохранено", description: "Размышление добавлено в библиотеку." });
+        toast({ title: T.toast_deep_saved, description: T.toast_deep_saved_desc });
       }
     }
   });
@@ -127,15 +132,21 @@ export default function LibraryPage() {
   const activeCat = ALL_CATEGORIES[activeCategory];
   const questions = LIBRARY_QUESTIONS[activeCategory] ?? [];
 
+  const getCategoryLabel = (key: CategoryKey): string => {
+    if (key === "universal") return T.library_universal;
+    return T[`sphere_${key}` as keyof typeof T] as string;
+  };
+  const activeCatLabel = getCategoryLabel(activeCategory);
+
   return (
     <div className="flex flex-col space-y-8 pt-6 pb-12">
       <header className="space-y-2">
         <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-2xl text-primary mb-2">
           <BookOpen className="w-6 h-6" />
         </div>
-        <h1 className="text-3xl font-serif font-medium text-foreground tracking-tight">Библиотека</h1>
+        <h1 className="text-3xl font-serif font-medium text-foreground tracking-tight">{T.library_title}</h1>
         <p className="text-muted-foreground text-base leading-relaxed">
-          Сократовские вопросы для исследования ваших базовых потребностей.
+          {T.library_subtitle}
         </p>
       </header>
 
@@ -156,7 +167,7 @@ export default function LibraryPage() {
               )}
             >
               <Icon className="w-4 h-4" />
-              <span>{cat.label}</span>
+              <span>{getCategoryLabel(key)}</span>
             </button>
           );
         })}
@@ -175,9 +186,9 @@ export default function LibraryPage() {
           <div className="bg-card rounded-3xl p-6 shadow-sm border border-card-border space-y-4">
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <span className={clsx("w-2 h-2 rounded-full", activeCat.bgClass)} />
-              {activeCat.label}
+              {activeCatLabel}
               <span className="text-sm font-normal text-muted-foreground ml-1">
-                ({questions.length} вопросов)
+                ({questions.length})
               </span>
             </h3>
 
@@ -190,6 +201,7 @@ export default function LibraryPage() {
                   hints={item.hints}
                   colorClass={activeCat.colorClass}
                   bgClass={activeCat.bgClass}
+                  hintsLabel={T.library_hints}
                 />
               ))}
             </div>
@@ -197,9 +209,13 @@ export default function LibraryPage() {
 
           {/* New Note Form */}
           <div className="bg-card rounded-3xl p-6 shadow-sm border border-card-border space-y-4">
-            <h3 className="font-semibold text-lg">Мои размышления</h3>
+            <h3 className="font-semibold text-lg">{T.library_saved_note}</h3>
             <Textarea
-              placeholder={`Запишите инсайт по сфере «${activeCat.label.toLowerCase()}»...`}
+              placeholder={
+                lang === "ru"
+                  ? `Запишите инсайт по сфере «${activeCatLabel.toLowerCase()}»...`
+                  : `Write an insight about "${activeCatLabel.toLowerCase()}"...`
+              }
               className="min-h-[120px] bg-background border-border rounded-xl resize-none text-base placeholder:text-muted-foreground/60 focus-visible:ring-1 focus-visible:ring-primary/30"
               value={noteContent}
               onChange={(e) => setNoteContent(e.target.value)}
@@ -210,22 +226,22 @@ export default function LibraryPage() {
                 disabled={!noteContent.trim() || createNote.isPending}
                 className="rounded-xl px-6"
               >
-                Сохранить заметку
+                {T.save}
               </Button>
             </div>
           </div>
 
           {/* History */}
           {isLoading ? (
-            <div className="py-8 text-center text-muted-foreground animate-pulse">Загрузка истории...</div>
+            <div className="py-8 text-center text-muted-foreground animate-pulse">…</div>
           ) : notes && notes.length > 0 ? (
             <div className="space-y-4 pt-4">
-              <h3 className="font-semibold text-lg pl-2">Прошлые записи</h3>
+              <h3 className="font-semibold text-lg pl-2">{T.journal_title}</h3>
               <div className="space-y-4">
                 {notes.map((note) => (
                   <div key={note.id} className="bg-card p-5 rounded-3xl border border-card-border shadow-sm flex flex-col space-y-3">
                     <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-                      {format(new Date(note.createdAt), "d MMMM yyyy", { locale: ru })}
+                      {format(new Date(note.createdAt), lang === "ru" ? "d MMMM yyyy" : "MMMM d, yyyy", { locale: dateLocale })}
                     </div>
                     <p className="text-foreground leading-relaxed whitespace-pre-wrap">
                       {note.content}
@@ -236,7 +252,7 @@ export default function LibraryPage() {
             </div>
           ) : (
             <div className="py-12 text-center text-muted-foreground/60 font-medium">
-              Здесь пока нет ваших записей для этой сферы.
+              {T.journal_no_answers}
             </div>
           )}
         </motion.div>

@@ -5,7 +5,7 @@ import {
   startOfWeek, endOfWeek, isSameDay, isSameMonth, isToday,
   addMonths, subMonths
 } from "date-fns";
-import { ru } from "date-fns/locale";
+import { ru, enUS } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, ChevronRight, CalendarDays, X,
@@ -16,8 +16,10 @@ import { useGetCheckins } from "@workspace/api-client-react";
 import type { Checkin } from "@workspace/api-client-react";
 import { clsx } from "clsx";
 import { Button } from "@/components/ui/button";
+import { useApp } from "@/contexts/app-context";
 
-const WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+const WEEKDAYS_RU = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+const WEEKDAYS_EN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 type SphereKey = "autonomy" | "competence" | "relatedness";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -95,6 +97,8 @@ function DayDetail({
   date: Date;
   onClose: () => void;
 }) {
+  const { T, lang } = useApp();
+  const dateLocale = lang === "ru" ? ru : enUS;
   const dateStr = format(date, "yyyy-MM-dd");
 
   // Deep-dive (always from localStorage keys)
@@ -142,9 +146,9 @@ function DayDetail({
   const hasAnyData = localDay || apiCheckin;
 
   const sphereData = [
-    { key: "autonomy" as SphereKey, label: "Автономия", icon: Wind },
-    { key: "competence" as SphereKey, label: "Компетентность", icon: Anchor },
-    { key: "relatedness" as SphereKey, label: "Связанность", icon: Users },
+    { key: "autonomy" as SphereKey, label: T.sphere_autonomy, icon: Wind },
+    { key: "competence" as SphereKey, label: T.sphere_competence, icon: Anchor },
+    { key: "relatedness" as SphereKey, label: T.sphere_relatedness, icon: Users },
   ];
 
   return createPortal(
@@ -162,10 +166,10 @@ function DayDetail({
         <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0 border-b border-border/50">
           <div>
             <h2 className="font-serif text-lg font-medium capitalize">
-              {format(date, "d MMMM yyyy", { locale: ru })}
+              {format(date, lang === "ru" ? "d MMMM yyyy" : "MMMM d, yyyy", { locale: dateLocale })}
             </h2>
             <p className="text-xs text-muted-foreground capitalize">
-              {format(date, "EEEE", { locale: ru })}
+              {format(date, "EEEE", { locale: dateLocale })}
             </p>
           </div>
           <button
@@ -181,14 +185,14 @@ function DayDetail({
           {!hasAnyData ? (
             <div className="py-16 text-center space-y-2">
               <CalendarCheck className="w-10 h-10 text-muted-foreground/30 mx-auto" />
-              <p className="text-muted-foreground/60 font-medium">Нет записей на этот день</p>
+              <p className="text-muted-foreground/60 font-medium">{T.journal_no_data}</p>
             </div>
           ) : (
             <>
               {/* Scores */}
               <section className="space-y-3">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Оценки потребностей
+                  {T.journal_scores}
                 </h3>
                 <div className="space-y-3 bg-secondary/40 rounded-2xl p-4">
                   {sphereData.map(s => (
@@ -227,7 +231,7 @@ function DayDetail({
                     {answers.length > 0 && (
                       <div className="space-y-3">
                         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          {answers.length > 1 ? `Вопросы и ответы (${answers.length})` : "Вопрос дня"}
+                          {answers.length > 1 ? `${T.journal_answers} (${answers.length})` : T.journal_answers}
                         </p>
                         {answers.map((qa, i) => (
                           <div key={i} className="space-y-1.5">
@@ -252,7 +256,7 @@ function DayDetail({
                         <div className="flex items-center gap-1.5">
                           <BookOpen className={clsx("w-3.5 h-3.5", sphere.colorClass)} />
                           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                            Глубокий разбор ({deepFilled.length})
+                            {T.checkin_deep_dive} ({deepFilled.length})
                           </p>
                         </div>
                         <div className="space-y-2">
@@ -283,7 +287,7 @@ function DayDetail({
               {note && (
                 <section className="space-y-2">
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Заметка дня
+                    {T.journal_note}
                   </h3>
                   {noteTags.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mb-2">
@@ -294,7 +298,7 @@ function DayDetail({
                         return (
                           <span key={tag} className={clsx("flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-white", s.bgClass)}>
                             <Icon className="w-3 h-3" />
-                            {s.label}
+                            {T[`sphere_${tag}` as keyof typeof T] as string}
                           </span>
                         );
                       })}
@@ -310,7 +314,7 @@ function DayDetail({
               {(localDay?.yesterday_review || (apiCheckin?.deepDiveAnswers as any)?.yesterday_review) && (
                 <section className="space-y-2">
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Что сработало из планов
+                    {T.journal_yesterday_review}
                   </h3>
                   <p className="text-sm text-foreground leading-relaxed bg-amber-50/60 dark:bg-amber-900/10 border border-amber-200/50 dark:border-amber-700/30 rounded-xl px-4 py-3 whitespace-pre-wrap italic">
                     {localDay?.yesterday_review || (apiCheckin?.deepDiveAnswers as any)?.yesterday_review}
@@ -327,7 +331,7 @@ function DayDetail({
                   return (
                     <section className="space-y-2">
                       <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        Микро-действия на завтра
+                        {T.journal_micro_new}
                       </h3>
                       <div className="space-y-2">
                         {multiActions.map((ma, i) => {
@@ -351,7 +355,7 @@ function DayDetail({
                   return (
                     <section className="space-y-2">
                       <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        Микро-действие
+                        {T.journal_micro_old}
                       </h3>
                       {microActionSphere && (() => {
                         const s = SPHERES[microActionSphere as SphereKey];
@@ -360,7 +364,7 @@ function DayDetail({
                         return (
                           <span className={clsx("inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-white mb-1", s.bgClass)}>
                             <Icon className="w-3 h-3" />
-                            {s.label}
+                            {T[`sphere_${microActionSphere}` as keyof typeof T] as string}
                           </span>
                         );
                       })()}
@@ -378,7 +382,7 @@ function DayDetail({
 
         <div className="px-6 py-4 shrink-0 border-t border-border/50">
           <Button variant="outline" onClick={onClose} className="w-full rounded-xl h-11">
-            Закрыть
+            {T.close}
           </Button>
         </div>
       </motion.div>
@@ -390,6 +394,9 @@ function DayDetail({
 // ── Calendar Page ─────────────────────────────────────────────────────────────
 
 export default function JournalPage() {
+  const { T, lang } = useApp();
+  const dateLocale = lang === "ru" ? ru : enUS;
+  const WEEKDAYS = lang === "ru" ? WEEKDAYS_RU : WEEKDAYS_EN;
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [localDays, setLocalDays] = useState<LocalDay[]>([]);
@@ -488,9 +495,9 @@ export default function JournalPage() {
         <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-2xl text-primary mb-2">
           <CalendarDays className="w-6 h-6" />
         </div>
-        <h1 className="text-3xl font-serif font-medium text-foreground tracking-tight">Журнал</h1>
+        <h1 className="text-3xl font-serif font-medium text-foreground tracking-tight">{T.journal_title}</h1>
         <p className="text-muted-foreground text-base leading-relaxed">
-          История ваших ежедневных размышлений.
+          {T.journal_subtitle}
         </p>
       </header>
 
@@ -507,14 +514,14 @@ export default function JournalPage() {
 
           <div className="flex items-center gap-3">
             <span className="font-semibold text-base capitalize">
-              {format(currentMonth, "LLLL yyyy", { locale: ru })}
+              {format(currentMonth, "LLLL yyyy", { locale: dateLocale })}
             </span>
             {notInCurrentMonth && (
               <button
                 onClick={() => { setCurrentMonth(new Date()); setSelectedDay(new Date()); }}
                 className="text-xs font-medium text-primary hover:underline"
               >
-                Сегодня
+                {T.nav_today}
               </button>
             )}
           </div>
@@ -597,15 +604,15 @@ export default function JournalPage() {
         <div className="flex items-center gap-4 px-5 pb-4 text-xs text-muted-foreground flex-wrap">
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span>Чекин</span>
+            <span>{T.journal_legend_checkin}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="text-[10px]">📝</span>
-            <span>Ответ/заметка</span>
+            <span>{T.journal_legend_note}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-primary/60" />
-            <span>Разбор</span>
+            <span>{T.journal_legend_deep}</span>
           </div>
         </div>
       </div>
@@ -614,16 +621,16 @@ export default function JournalPage() {
       {monthStats && (
         <div className="bg-card rounded-3xl p-5 shadow-sm border border-card-border">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3 capitalize">
-            {format(currentMonth, "LLLL", { locale: ru })} — статистика
+            {format(currentMonth, "LLLL", { locale: dateLocale })} {T.journal_month_stats_suffix}
           </h3>
           <div className="space-y-3">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Записей</span>
+              <span className="text-muted-foreground">{T.journal_records}</span>
               <span className="font-semibold">{monthStats.count}</span>
             </div>
-            <ScoreBar label="Автономия (avg)" value={parseFloat(monthStats.autonomy.toFixed(1))} colorClass={SPHERES.autonomy.colorClass} bgClass={SPHERES.autonomy.bgClass} />
-            <ScoreBar label="Компетентность (avg)" value={parseFloat(monthStats.competence.toFixed(1))} colorClass={SPHERES.competence.colorClass} bgClass={SPHERES.competence.bgClass} />
-            <ScoreBar label="Связанность (avg)" value={parseFloat(monthStats.relatedness.toFixed(1))} colorClass={SPHERES.relatedness.colorClass} bgClass={SPHERES.relatedness.bgClass} />
+            <ScoreBar label={`${T.sphere_autonomy} ${T.journal_avg_suffix}`} value={parseFloat(monthStats.autonomy.toFixed(1))} colorClass={SPHERES.autonomy.colorClass} bgClass={SPHERES.autonomy.bgClass} />
+            <ScoreBar label={`${T.sphere_competence} ${T.journal_avg_suffix}`} value={parseFloat(monthStats.competence.toFixed(1))} colorClass={SPHERES.competence.colorClass} bgClass={SPHERES.competence.bgClass} />
+            <ScoreBar label={`${T.sphere_relatedness} ${T.journal_avg_suffix}`} value={parseFloat(monthStats.relatedness.toFixed(1))} colorClass={SPHERES.relatedness.colorClass} bgClass={SPHERES.relatedness.bgClass} />
           </div>
         </div>
       )}

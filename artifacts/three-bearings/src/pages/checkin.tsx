@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { format, subDays } from "date-fns";
-import { ru } from "date-fns/locale";
+import { ru, enUS } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
 import { RefreshCw, Save, ChevronRight, BookOpen, X, List, Plus, Trash2, CheckCheck } from "lucide-react";
 import { SPHERES, LIBRARY_QUESTIONS } from "@/lib/constants";
@@ -99,8 +99,11 @@ function AllAnswersModal({ sphere, qAnswers, onClose }: {
   sphere: SphereKey; qAnswers: Record<number, string>; onClose: () => void;
 }) {
   const config = SPHERES[sphere];
+  const { T, lang } = useApp();
   const Icon = config.icon;
-  const pool = SOCRATIC_POOL[sphere];
+  // Display pool follows current language; indices are shared between languages
+  const pool = SOCRATIC_POOL_I18N[lang][sphere];
+  const sphereLabel = T[`sphere_${sphere}` as keyof typeof T] as string;
   const filled = Object.entries(qAnswers)
     .filter(([, v]) => v.trim())
     .map(([idxStr, answer]) => ({ idx: parseInt(idxStr), question: pool[parseInt(idxStr)] ?? "", answer }));
@@ -120,8 +123,8 @@ function AllAnswersModal({ sphere, qAnswers, onClose }: {
               <Icon className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="font-semibold text-base leading-tight">Ответы за сегодня</h2>
-              <p className={clsx("text-xs font-medium", config.colorClass)}>{config.label}</p>
+              <h2 className="font-semibold text-base leading-tight">{T.modal_answers_title}</h2>
+              <p className={clsx("text-xs font-medium", config.colorClass)}>{sphereLabel}</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary">
@@ -130,7 +133,7 @@ function AllAnswersModal({ sphere, qAnswers, onClose }: {
         </div>
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
           {filled.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-10 text-center">Нет ответов за сегодня</p>
+            <p className="text-sm text-muted-foreground py-10 text-center">{T.modal_answers_empty}</p>
           ) : filled.map(({ idx, question, answer }) => (
             <div key={idx} className="space-y-2">
               <p className="text-sm font-serif italic text-foreground/80 leading-relaxed">"{question}"</p>
@@ -139,7 +142,7 @@ function AllAnswersModal({ sphere, qAnswers, onClose }: {
           ))}
         </div>
         <div className="px-6 py-4 border-t border-border/50 shrink-0">
-          <Button variant="outline" onClick={onClose} className="w-full rounded-xl h-10">Закрыть</Button>
+          <Button variant="outline" onClick={onClose} className="w-full rounded-xl h-10">{T.close}</Button>
         </div>
       </motion.div>
     </div>,
@@ -153,15 +156,17 @@ function DeepDiveModal({ sphere, date, onClose }: {
   sphere: SphereKey; date: string; onClose: () => void;
 }) {
   const { toast } = useToast();
+  const { T } = useApp();
   const config = SPHERES[sphere];
   const Icon = config.icon;
   const questions = LIBRARY_QUESTIONS[sphere] ?? [];
+  const sphereLabel = T[`sphere_${sphere}` as keyof typeof T] as string;
   const [answers, setAnswers] = useState<Record<number, string>>(() => loadDeepDiveFromStorage(date, sphere));
   const filledCount = Object.values(answers).filter(v => v.trim()).length;
 
   const handleSave = () => {
     saveDeepDiveToStorage(date, sphere, answers);
-    toast({ title: "Сохранено", description: "Ответы глубокого разбора записаны." });
+    toast({ title: T.toast_deep_saved, description: T.toast_deep_saved_desc });
     onClose();
   };
 
@@ -180,8 +185,8 @@ function DeepDiveModal({ sphere, date, onClose }: {
               <Icon className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="font-semibold text-base leading-tight">Глубокий разбор</h2>
-              <p className={clsx("text-xs font-medium", config.colorClass)}>{config.label}</p>
+              <h2 className="font-semibold text-base leading-tight">{T.checkin_deep_dive}</h2>
+              <p className={clsx("text-xs font-medium", config.colorClass)}>{sphereLabel}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -199,7 +204,7 @@ function DeepDiveModal({ sphere, date, onClose }: {
                 <p className="text-sm font-serif leading-relaxed text-foreground/90">{item.question}</p>
               </div>
               <Textarea
-                placeholder="Мой ответ..."
+                placeholder={T.checkin_answer_placeholder}
                 rows={2}
                 className="resize-none text-sm bg-secondary/40 border-border/50 rounded-xl placeholder:text-muted-foreground/50 focus-visible:ring-1 focus-visible:ring-primary/30"
                 value={answers[i] ?? ""}
@@ -211,7 +216,7 @@ function DeepDiveModal({ sphere, date, onClose }: {
         </div>
         <div className="px-6 py-4 border-t border-border/50 shrink-0 bg-background">
           <Button onClick={handleSave} className="w-full h-11 rounded-xl text-sm font-medium">
-            <Save className="w-4 h-4 mr-2" />Сохранить
+            <Save className="w-4 h-4 mr-2" />{T.save}
           </Button>
         </div>
       </motion.div>
@@ -222,12 +227,22 @@ function DeepDiveModal({ sphere, date, onClose }: {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
+interface SphereIdeasState {
+  current: number[]; // currently displayed indices
+  history: number[]; // all previously shown indices for no-repeat
+}
+
 export default function CheckinPage() {
   const { toast } = useToast();
+  const { T, lang } = useApp();
   const queryClient = useQueryClient();
   const todayDate = format(new Date(), "yyyy-MM-dd");
   const yesterdayDate = format(subDays(new Date(), 1), "yyyy-MM-dd");
-  const displayDate = format(new Date(), "d MMMM, EEEE", { locale: ru });
+  const displayDate = format(
+    new Date(),
+    lang === "ru" ? "d MMMM, EEEE" : "EEEE, MMMM d",
+    { locale: lang === "ru" ? ru : enUS }
+  );
 
   const { data: todayCheckin, isLoading: isFetching } = useGetTodayCheckin();
   const createCheckin = useCreateCheckin({
@@ -235,10 +250,10 @@ export default function CheckinPage() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetTodayCheckinQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetCheckinsQueryKey() });
-        toast({ title: "День сохранен", description: "Ваши размышления бережно записаны." });
+        toast({ title: T.toast_saved, description: T.toast_saved_desc });
       },
       onError: () => {
-        toast({ variant: "destructive", title: "Ошибка", description: "Не удалось сохранить день." });
+        toast({ variant: "destructive", title: T.toast_error, description: T.toast_save_error });
       }
     }
   });
@@ -249,9 +264,11 @@ export default function CheckinPage() {
   const [yesterdayReview, setYesterdayReview] = useState("");
   const [microActions, setMicroActions] = useState<MicroActionEntry[]>([]);
 
-  // Multi-sphere micro-action ideas (per sphere)
-  const [ideasIndices, setIdeasIndices] = useState<Record<SphereKey, number[]>>({
-    autonomy: [0, 1, 2], competence: [0, 1, 2], relatedness: [0, 1, 2],
+  // Multi-sphere micro-action ideas (per sphere) with no-repeat history
+  const [sphereIdeasState, setSphereIdeasState] = useState<Record<SphereKey, SphereIdeasState>>({
+    autonomy: { current: [0, 1, 2], history: [0, 1, 2] },
+    competence: { current: [0, 1, 2], history: [0, 1, 2] },
+    relatedness: { current: [0, 1, 2], history: [0, 1, 2] },
   });
 
   // Yesterday's micro-actions (read once, displayed as context)
@@ -297,8 +314,9 @@ export default function CheckinPage() {
         setMicroActions([{ sphere: localDay.micro_action_sphere as SphereKey, action: localDay.micro_action as string }]);
       }
 
+      // Storage always uses the Russian pool to keep restoration stable across language switches
       const restoreAll = (sphere: SphereKey, key: string) =>
-        restoreQAnswers(SOCRATIC_POOL[sphere], (localDay[key] as QAnswer[]) ?? []);
+        restoreQAnswers(SOCRATIC_POOL_I18N.ru[sphere], (localDay[key] as QAnswer[]) ?? []);
       const restored = {
         autonomy: restoreAll("autonomy", "autonomy_answers"),
         competence: restoreAll("competence", "competence_answers"),
@@ -339,11 +357,12 @@ export default function CheckinPage() {
       if (savedMicroActions?.length) setMicroActions(savedMicroActions);
 
       const restoreFromDda = (sphere: SphereKey): Record<number, string> => {
+        const ruPool = SOCRATIC_POOL_I18N.ru[sphere];
         const arr = dda[`${sphere}_answers`] as QAnswer[] | undefined;
-        if (arr?.length) return restoreQAnswers(SOCRATIC_POOL[sphere], arr);
+        if (arr?.length) return restoreQAnswers(ruPool, arr);
         const q = dda[`${sphere}_question`] as string | undefined;
         const a = dda[`${sphere}_answer`] as string | undefined;
-        if (q) { const idx = SOCRATIC_POOL[sphere].indexOf(q); if (idx >= 0 && a) return { [idx]: a }; }
+        if (q) { const idx = ruPool.indexOf(q); if (idx >= 0 && a) return { [idx]: a }; }
         return {};
       };
       setSphereQAnswers({
@@ -355,8 +374,9 @@ export default function CheckinPage() {
   }, [todayCheckin, dataLoaded]);
 
   const handleSave = () => {
+    // Always store using the Russian pool so language switching doesn't break restoration
     const buildArr = (sphere: SphereKey) =>
-      buildAnswersArray(SOCRATIC_POOL[sphere], sphereQAnswers[sphere]);
+      buildAnswersArray(SOCRATIC_POOL_I18N.ru[sphere], sphereQAnswers[sphere]);
 
     const primaryAction = microActions[0] ?? null;
 
@@ -408,14 +428,25 @@ export default function CheckinPage() {
     setSphereQAnswers(prev => ({ ...prev, [sphere]: { ...prev[sphere], [idx]: text } }));
   };
 
+  // No-repeat randomizer: filters out previously shown indices, resets when fewer than 3 remain
   const cycleIdeasForSphere = (sphere: SphereKey) => {
-    const poolSize = INSPIRATION_IDEAS[sphere].length;
-    const next: number[] = [];
-    while (next.length < 3) {
-      const r = Math.floor(Math.random() * poolSize);
-      if (!next.includes(r)) next.push(r);
-    }
-    setIdeasIndices(prev => ({ ...prev, [sphere]: next }));
+    const poolSize = INSPIRATION_IDEAS_I18N[lang][sphere].length;
+    setSphereIdeasState(prev => {
+      const { history } = prev[sphere];
+      const allIndices = Array.from({ length: poolSize }, (_, i) => i);
+      let available = allIndices.filter(i => !history.includes(i));
+      let newHistory = history;
+      if (available.length < 3) {
+        newHistory = [];
+        available = allIndices;
+      }
+      const shuffled = [...available].sort(() => Math.random() - 0.5);
+      const picked = shuffled.slice(0, 3);
+      return {
+        ...prev,
+        [sphere]: { current: picked, history: [...newHistory, ...picked] },
+      };
+    });
   };
 
   const addSphereToMicroActions = (sphere: SphereKey) => {
@@ -457,7 +488,7 @@ export default function CheckinPage() {
           >
             {displayDate}
           </motion.h1>
-          <p className="text-muted-foreground text-sm font-medium tracking-wide">КАК ВЫ ЧУВСТВУЕТЕ СЕБЯ СЕГОДНЯ?</p>
+          <p className="text-muted-foreground text-sm font-medium tracking-wide">{T.checkin_subtitle}</p>
         </header>
 
         {/* Yesterday review — only if yesterday had plans */}
@@ -469,10 +500,10 @@ export default function CheckinPage() {
             <div className="absolute top-0 left-0 w-1 h-full bg-amber-400/70 rounded-l-3xl" />
             <div className="flex items-center gap-2 mb-1">
               <CheckCheck className="w-5 h-5 text-amber-500" />
-              <h3 className="font-semibold text-base">Что сработало вчера?</h3>
+              <h3 className="font-semibold text-base">{T.checkin_yesterday_title}</h3>
             </div>
 
-            <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Вчера вы планировали:</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">{T.checkin_yesterday_planned}</p>
             <div className="flex flex-wrap gap-2">
               {yesterdayActions.map((ma, i) => {
                 const s = SPHERES[ma.sphere];
@@ -488,7 +519,7 @@ export default function CheckinPage() {
             </div>
 
             <Textarea
-              placeholder="Что из этого получилось? Как оно повлияло на вас?"
+              placeholder={T.checkin_yesterday_placeholder}
               rows={3}
               className="resize-none bg-background/70 border-border/60 rounded-xl text-sm leading-relaxed placeholder:text-muted-foreground/50 focus-visible:ring-1 focus-visible:ring-amber-400/40"
               value={yesterdayReview}
@@ -501,7 +532,8 @@ export default function CheckinPage() {
         <div className="space-y-6">
           {(Object.entries(SPHERES) as [SphereKey, typeof SPHERES[SphereKey]][]).map(([key, sphere], idx) => {
             const Icon = sphere.icon;
-            const question = SOCRATIC_POOL[key][qIndices[key]];
+            const question = SOCRATIC_POOL_I18N[lang][key][qIndices[key]];
+            const sphereLabel = T[`sphere_${key}` as keyof typeof T] as string;
             const score = scores[key];
             const currentAnswer = sphereQAnswers[key][qIndices[key]] ?? "";
             const answeredCount = Object.values(sphereQAnswers[key]).filter(v => v.trim()).length;
@@ -521,20 +553,20 @@ export default function CheckinPage() {
                     <div className={clsx("p-2 rounded-2xl", sphere.lightBgClass, sphere.colorClass)}>
                       <Icon className="w-5 h-5" />
                     </div>
-                    <h3 className="font-semibold text-lg">{sphere.label}</h3>
+                    <h3 className="font-semibold text-lg">{sphereLabel}</h3>
                   </div>
                   <button
                     onClick={() => cycleQuestion(key)}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-muted-foreground hover:text-foreground transition-colors hover:bg-secondary border border-transparent hover:border-border/40"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
-                    <span>Другой вопрос</span>
+                    <span>{T.checkin_other_question}</span>
                   </button>
                 </div>
 
                 <AnimatePresence mode="wait">
                   <motion.div
-                    key={`${key}-${qIndices[key]}`}
+                    key={`${key}-${qIndices[key]}-${lang}`}
                     initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
                     transition={{ duration: 0.2 }}
                     className="text-[1.05rem] leading-relaxed font-serif text-foreground/90 italic pl-1"
@@ -545,7 +577,7 @@ export default function CheckinPage() {
 
                 <Textarea
                   key={`${key}-answer-${qIndices[key]}`}
-                  placeholder="Мой ответ..."
+                  placeholder={T.checkin_answer_placeholder}
                   rows={3}
                   className="resize-none bg-background/70 border-border/60 rounded-xl text-sm leading-relaxed placeholder:text-muted-foreground/50 focus-visible:ring-1 focus-visible:ring-primary/30"
                   value={currentAnswer}
@@ -561,15 +593,15 @@ export default function CheckinPage() {
                     )}
                   >
                     <List className="w-3.5 h-3.5" />
-                    <span>Все ответы ({answeredCount})</span>
+                    <span>{T.checkin_all_answers} ({answeredCount})</span>
                   </button>
                 )}
 
                 <div className="space-y-3 pt-1">
                   <div className="flex justify-between items-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    <span>Совсем нет</span>
+                    <span>{T.checkin_score_low}</span>
                     <span className={clsx("text-base font-bold", sphere.colorClass)}>{score}</span>
-                    <span>Полностью</span>
+                    <span>{T.checkin_score_high}</span>
                   </div>
                   <Slider
                     value={[score]}
@@ -591,7 +623,7 @@ export default function CheckinPage() {
                     )}
                   >
                     <BookOpen className="w-3.5 h-3.5" />
-                    <span>Глубокий разбор</span>
+                    <span>{T.checkin_deep_dive}</span>
                     {deepDiveFilled > 0 && <span className={clsx("text-xs font-bold", sphere.colorClass)}>{deepDiveFilled}</span>}
                   </button>
                 </div>
@@ -605,18 +637,19 @@ export default function CheckinPage() {
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
           className="bg-card rounded-3xl p-6 shadow-sm border border-card-border space-y-4"
         >
-          <h3 className="font-semibold text-lg">Заметка дня</h3>
+          <h3 className="font-semibold text-lg">{T.checkin_note_title}</h3>
           <Textarea
-            placeholder="Что было важного сегодня? Событие, мысль, состояние..."
+            placeholder={T.checkin_note_placeholder}
             className="min-h-[120px] bg-background border-border rounded-xl resize-none text-base leading-relaxed placeholder:text-muted-foreground/60 focus-visible:ring-1 focus-visible:ring-primary/30"
             value={note}
             onChange={(e) => setNote(e.target.value)}
           />
           <div className="flex flex-wrap gap-2 pt-2">
-            <span className="text-xs font-medium text-muted-foreground py-1.5 mr-1 uppercase tracking-wider">Теги:</span>
+            <span className="text-xs font-medium text-muted-foreground py-1.5 mr-1 uppercase tracking-wider">{T.checkin_tags_label}</span>
             {(Object.entries(SPHERES) as [SphereKey, typeof SPHERES[SphereKey]][]).map(([k, s]) => {
               const isActive = noteTags.includes(k);
               const Icon = s.icon;
+              const sLabel = T[`sphere_${k}` as keyof typeof T] as string;
               return (
                 <button key={k} onClick={() => toggleTag(k)}
                   className={clsx(
@@ -625,7 +658,7 @@ export default function CheckinPage() {
                   )}
                 >
                   <Icon className="w-3.5 h-3.5" />
-                  <span>{s.label}</span>
+                  <span>{sLabel}</span>
                 </button>
               );
             })}
@@ -638,8 +671,8 @@ export default function CheckinPage() {
           className="bg-card rounded-3xl p-6 shadow-sm border border-card-border space-y-5"
         >
           <div className="space-y-1">
-            <h3 className="font-semibold text-lg">Что я могу изменить завтра?</h3>
-            <p className="text-sm text-muted-foreground">Выберите одну или несколько сфер для фокуса</p>
+            <h3 className="font-semibold text-lg">{T.checkin_micro_title}</h3>
+            <p className="text-sm text-muted-foreground">{T.checkin_micro_subtitle}</p>
           </div>
 
           {/* Added sphere actions */}
@@ -647,7 +680,8 @@ export default function CheckinPage() {
             {microActions.map((ma) => {
               const sphere = SPHERES[ma.sphere];
               const Icon = sphere.icon;
-              const ideas = ideasIndices[ma.sphere];
+              const ideas = sphereIdeasState[ma.sphere].current;
+              const sphereLabel = T[`sphere_${ma.sphere}` as keyof typeof T] as string;
               return (
                 <motion.div
                   key={ma.sphere}
@@ -660,7 +694,7 @@ export default function CheckinPage() {
                   <div className="flex items-center justify-between">
                     <div className={clsx("flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-medium", sphere.lightBgClass, sphere.colorClass)}>
                       <Icon className="w-4 h-4" />
-                      <span>{sphere.label}</span>
+                      <span>{sphereLabel}</span>
                     </div>
                     <button
                       onClick={() => removeSphereFromMicroActions(ma.sphere)}
@@ -673,13 +707,14 @@ export default function CheckinPage() {
                   {/* Ideas */}
                   <div className="bg-secondary/50 rounded-2xl p-3 border border-border/50 space-y-2">
                     <div className="flex justify-between items-center">
-                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Идеи</span>
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{T.checkin_ideas_label}</span>
                       <button onClick={() => cycleIdeasForSphere(ma.sphere)} className="flex items-center text-xs text-primary font-medium hover:underline">
-                        <RefreshCw className="w-3 h-3 mr-1" /> Другие
+                        <RefreshCw className="w-3 h-3 mr-1" /> {T.checkin_ideas_other}
                       </button>
                     </div>
                     {ideas.map(i => {
-                      const idea = INSPIRATION_IDEAS[ma.sphere][i];
+                      const idea = INSPIRATION_IDEAS_I18N[lang][ma.sphere][i];
+                      if (!idea) return null;
                       return (
                         <button key={i} onClick={() => updateMicroActionText(ma.sphere, idea)}
                           className="w-full text-left p-2.5 rounded-xl bg-background border border-border hover:border-primary/30 hover:shadow-sm transition-all text-sm group flex justify-between items-center"
@@ -692,7 +727,7 @@ export default function CheckinPage() {
                   </div>
 
                   <Textarea
-                    placeholder={`Моё действие для ${sphere.label.toLowerCase()}...`}
+                    placeholder={lang === "ru" ? `Моё действие для ${sphereLabel.toLowerCase()}...` : `My action for ${sphereLabel.toLowerCase()}...`}
                     className="min-h-[80px] bg-background border-border rounded-xl resize-none focus-visible:ring-1 focus-visible:ring-primary/30 text-sm"
                     value={ma.action}
                     onChange={(e) => updateMicroActionText(ma.sphere, e.target.value)}
@@ -708,6 +743,7 @@ export default function CheckinPage() {
               {availableSpheres.map(key => {
                 const s = SPHERES[key];
                 const Icon = s.icon;
+                const sLabel = T[`sphere_${key}` as keyof typeof T] as string;
                 return (
                   <button
                     key={key}
@@ -716,7 +752,7 @@ export default function CheckinPage() {
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <Icon className="w-3.5 h-3.5" />
-                    <span>{s.label}</span>
+                    <span>{sLabel}</span>
                   </button>
                 );
               })}
@@ -732,7 +768,7 @@ export default function CheckinPage() {
             className="w-full h-14 rounded-2xl text-base font-medium shadow-md hover:shadow-lg transition-all"
           >
             {createCheckin.isPending ? <RefreshCw className="w-5 h-5 mr-2 animate-spin" /> : <Save className="w-5 h-5 mr-2" />}
-            Сохранить день
+            {T.checkin_save}
           </Button>
         </motion.div>
       </div>
