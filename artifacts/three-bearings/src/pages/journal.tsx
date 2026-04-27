@@ -11,7 +11,8 @@ import {
   ChevronLeft, ChevronRight, CalendarDays, X,
   Wind, Anchor, Users, BookOpen, CalendarCheck
 } from "lucide-react";
-import { SPHERES, LIBRARY_QUESTIONS } from "@/lib/constants";
+import { SPHERES } from "@/lib/constants";
+import { LIBRARY_QUESTIONS_I18N } from "@/lib/i18n";
 import { useGetCheckins } from "@workspace/api-client-react";
 import type { Checkin } from "@workspace/api-client-react";
 import { clsx } from "clsx";
@@ -262,7 +263,7 @@ function DayDetail({
                         <div className="space-y-2">
                           {deepFilled.map(([idxStr, ans]) => {
                             const idx = parseInt(idxStr);
-                            const qItem = LIBRARY_QUESTIONS[s.key]?.[idx];
+                            const qItem = LIBRARY_QUESTIONS_I18N[lang][s.key]?.[idx];
                             return (
                               <div key={idxStr} className="bg-secondary/40 rounded-xl p-3 space-y-1.5">
                                 {qItem && (

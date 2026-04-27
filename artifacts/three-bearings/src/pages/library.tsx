@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { SPHERES, LIBRARY_QUESTIONS } from "@/lib/constants";
+import { SPHERES } from "@/lib/constants";
+import { LIBRARY_QUESTIONS_I18N } from "@/lib/i18n";
 import { BookOpen, ChevronDown, Feather, Lightbulb } from "lucide-react";
 import { clsx } from "clsx";
 import { useGetLibraryNotes, useCreateLibraryNote, getGetLibraryNotesQueryKey } from "@workspace/api-client-react";
@@ -130,7 +131,7 @@ export default function LibraryPage() {
   };
 
   const activeCat = ALL_CATEGORIES[activeCategory];
-  const questions = LIBRARY_QUESTIONS[activeCategory] ?? [];
+  const questions = LIBRARY_QUESTIONS_I18N[lang][activeCategory] ?? [];
 
   const getCategoryLabel = (key: CategoryKey): string => {
     if (key === "universal") return T.library_universal;

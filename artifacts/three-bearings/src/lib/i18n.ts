@@ -108,6 +108,431 @@ export const INSPIRATION_IDEAS_I18N: Record<Lang, Record<string, string[]>> = {
   },
 };
 
+// ── LIBRARY_QUESTIONS (bilingual) ─────────────────────────────────────────
+export type LibraryQuestion = { question: string; hints: string[] };
+export const LIBRARY_QUESTIONS_I18N: Record<Lang, Record<string, LibraryQuestion[]>> = {
+  ru: {
+    autonomy: [
+      { question: "Действовал ли я сегодня исходя из своих ценностей или под давлением обстоятельств?", hints: [
+        "Какое решение сегодня было самым важным? Что повлияло на него?",
+        "Если бы никто не смотрел и не оценивал, сделал(а) бы ты то же самое?",
+        "Назови одну ситуацию, где ты чувствовал(а) внутренний конфликт. Что там победило?"
+      ]},
+      { question: "Если бы я был абсолютно свободен в выборе, что из сегодняшних дел я бы оставил, а что вычеркнул?", hints: [
+        "Представь, что у тебя есть волшебная палочка. Какие 1–2 дела исчезли бы из твоего дня?",
+        "А какие дела ты оставил(а) бы, даже если бы не надо было?",
+        "Что ты делал(а) сегодня просто потому, что тебе это нравится?"
+      ]},
+      { question: "В какие моменты я чувствовал, что «надо», а не «хочу»? Почему?", hints: [
+        "Вспомни момент, когда ты вздыхал(а) перед тем, как что-то сделать.",
+        "Чей голос звучал в голове: родителя, начальника, внутреннего критика?",
+        "Если бы ты спросил(а) себя «зачем мне это надо?», какой был бы ответ?"
+      ]},
+      { question: "Я делал это потому, что хотел, или потому что должен был (надо)?", hints: [
+        "Вспомни одно конкретное действие сегодня. Что двигало тобой в тот момент?",
+        "Если убрать мысль «так надо», что бы ты выбрал(а) сделать?",
+        "Был ли момент, когда ты сделал(а) что-то с внутренним сопротивлением? Что именно?"
+      ]},
+      { question: "Какое «нет» я сегодня не сказал, но стоило?", hints: [
+        "Кому или чему ты хотел(а) отказать, но согласился(лась)?",
+        "Что ты чувствовал(а) в тот момент?",
+        "Если бы ты сказал(а) «нет», что было бы самым страшным в этом? А что хорошим?"
+      ]},
+      { question: "Если я чувствую давление, кто или что является его источником? Реален ли этот источник или это моё предположение?", hints: [
+        "Это конкретный человек сказал тебе «надо», или ты сам(а) так решил(а)?",
+        "Если честно спросить себя: что случится, если я не сделаю этого?",
+        "Представь, что источник давления исчез. Что бы ты сделал(а) иначе?"
+      ]},
+      { question: "Могу ли я осознанно выбрать те обязанности, которые кажутся «долженствованием», чтобы вернуть себе автономию?", hints: [
+        "Выбери одну обязанность, которая тяготит. Зачем ты её делаешь? Какая в ней твоя выгода?",
+        "Если ты скажешь себе: «я выбираю это сделать, потому что для меня важно Х» — изменится ли ощущение?",
+        "Какая обязанность сегодня была на 100% твоим выбором?"
+      ]},
+      { question: "В каких решениях сегодня я отдал свою власть другому человеку или обстоятельствам?", hints: [
+        "Было ли сегодня решение, которое принял(а) не ты?",
+        "Ты согласился(лась) с чем-то, хотя внутри был(а) против?",
+        "Если бы ты взял(а) это решение в свои руки, что бы изменил(а)?"
+      ]},
+      { question: "Если бы я сейчас получил полную свободу на один день, что бы я изменил в сегодняшнем расписании?", hints: [
+        "Что бы ты вычеркнул(а) первым делом?",
+        "Что бы добавил(а) такого, чего сегодня точно не было?",
+        "С кем бы ты провёл(ла) время? А от кого бы взял(а) паузу?"
+      ]},
+      { question: "Чей голос звучит в моей голове, когда я говорю «я обязан»?", hints: [
+        "Этот голос похож на кого-то из прошлого? Родителя, учителя, бывшего партнёра?",
+        "Что именно он говорит? Какие слова?",
+        "Если бы этот голос принадлежал доброму другу, что бы он сказал вместо этого?"
+      ]},
+      { question: "Что из того, что я сделал сегодня, было моим искренним выбором, даже если это было сложно?", hints: [
+        "Вспомни момент, когда ты мог(ла) поступить проще, но выбрал(а) сложнее, потому что это было честнее.",
+        "Что ты сделал(а) сегодня, что было именно твоим решением?",
+        "Даже если результат не идеален — что ты выбрал(а) сам(а)?"
+      ]},
+    ],
+    competence: [
+      { question: "С каким вызовом я сегодня столкнулся и чему он меня научил, даже если я не справился идеально?", hints: [
+        "Что сегодня было трудным? Что ты чувствовал(а) в этот момент?",
+        "Даже если результат не такой, как хотелось, что ты узнал(а) о себе или о процессе?",
+        "Если бы это повторилось завтра, что бы ты сделал(а) иначе?"
+      ]},
+      { question: "В чём я сегодня стал чуть лучше, чем вчера?", hints: [
+        "Это может быть что угодно: чуть больше терпения, чуть быстрее, чуть спокойнее.",
+        "Сравни с собой вчерашним. Где прогресс, даже микроскопический?",
+        "Что сегодня получилось легче, чем обычно?"
+      ]},
+      { question: "Какие мои сильные стороны помогли мне продвинуться в делах?", hints: [
+        "Какие твои качества сегодня сработали? Упорство? Гибкость? Эмпатия? Организованность?",
+        "Что ты сделал(а) хорошо сегодня?",
+        "Что другие люди ценят в тебе? Сегодня это проявилось?"
+      ]},
+      { question: "С чем я справился сегодня, даже если это было мелко? Что доказывает, что я эффективен?", hints: [
+        "Это может быть что угодно: встал с кровати, ответил на сложное письмо, приготовил еду, сказал «нет», успокоился после стресса.",
+        "Если ничего не приходит в голову, представь, что твой лучший друг перечисляет твои заслуги за сегодня. Что бы он назвал?",
+        "Не ищи «великих достижений». Мелочи — это тоже доказательства."
+      ]},
+      { question: "Была ли задача, которую я избегал из-за страха не справиться? Реален ли этот страх или это перфекционизм?", hints: [
+        "Какую задачу ты откладывал(а) сегодня? Что ты чувствовал(а), когда думал(а) о ней?",
+        "Если бы ты не боялся(ась) ошибиться, сделал(а) бы ты её?",
+        "Что бы случилось на самом деле, если бы ты сделал(а) это неидеально?"
+      ]},
+      { question: "Что я сделал сегодня, что доказало мне: я способен(а) на большее, чем думал(а)?", hints: [
+        "Был ли момент, когда ты удивил(а) сам(а) себя?",
+        "Что ты сделал(а), чего не ожидал(а) от себя?",
+        "Если бы ты сказал(а) себе утром, что сделаешь это — поверил(а) бы?"
+      ]},
+      { question: "Если бы мой лучший друг описал свою неудачу сегодня теми же словами, что и я, сказал бы я ему, что он некомпетентен?", hints: [
+        "Какие слова ты используешь о себе, когда что-то идёт не так?",
+        "Сказал(а) бы ты это другу?",
+        "Что бы ты сказал(а) другу вместо этого? Попробуй сказать это себе."
+      ]},
+      { question: "Где я сегодня был(а) слишком строг(а) к себе и не заметил(а) своих реальных достижений?", hints: [
+        "За что ты себя сегодня критиковал(а)? А за что можно было бы похвалить?",
+        "Если бы кто-то другой сделал то же самое, осудил(а) бы ты его?",
+        "Что ты сделал(а) сегодня, но не засчитал(а) себе?"
+      ]},
+      { question: "Какая задача сегодня казалась сложной, но я всё равно с ней справился(лась)? Как мне это удалось?", hints: [
+        "Что в начале дня казалось неподъёмным, но ты это сделал(а)?",
+        "Какие ресурсы ты использовал(а)? Время? Помощь? Терпение?",
+        "Что именно помогло тебе не бросить?"
+      ]},
+      { question: "Что я сегодня сделал(а) впервые или научился(лась) делать лучше?", hints: [
+        "Был ли сегодня опыт, которого раньше не было?",
+        "Что ты сделал(а) сегодня быстрее, легче или осознаннее, чем обычно?",
+        "Даже если это маленький шаг — что ты освоил(а)?"
+      ]},
+      { question: "Если бы я посмотрел(а) на свой день глазами стороннего наблюдателя, какие моменты показались бы мне доказательством моей эффективности?", hints: [
+        "Представь, что ты смотришь фильм о своём дне. Какие сцены показали бы, что главный герой справляется?",
+        "Что бы заметил(а) беспристрастный наблюдатель?",
+        "Какие действия сегодня были эффективными, даже если ты этого не чувствуешь?"
+      ]},
+      { question: "Какой маленький шаг я сделал(а) сегодня в сторону навыка, который хочу развить?", hints: [
+        "Есть ли навык, который ты развиваешь? Что ты сегодня сделал(а) для этого?",
+        "Это может быть 5 минут практики, одно прочитанное письмо, один раз, когда ты сдержал(а) эмоцию.",
+        "Если ты ничего не делал(а) — что мог(ла) бы сделать завтра за 2 минуты?"
+      ]},
+    ],
+    relatedness: [
+      { question: "Был ли я сегодня искренним в общении или играл роль?", hints: [
+        "Был ли момент, когда ты сказал(а) не то, что думаешь?",
+        "С кем ты сегодня был(а) собой настоящим(ей)?",
+        "Если надевал(а) «маску» — зачем? Что пытался(лась) защитить?"
+      ]},
+      { question: "Кому я сегодня помог или кто помог мне почувствовать себя понятым?", hints: [
+        "Был ли момент, когда ты поддержал(а) кого-то?",
+        "Был ли момент, когда кто-то услышал тебя по-настоящему?",
+        "Что именно сделало этот момент тёплым?"
+      ]},
+      { question: "Как мои сегодняшние действия повлияли на людей, которые мне дороги?", hints: [
+        "Что ты сделал(а) сегодня, что повлияло на близких? Даже если это мелочь.",
+        "Как твоё настроение или действия отразились на ком-то из важных людей?",
+        "Если бы они описали твоё влияние на их день, что бы они сказали?"
+      ]},
+      { question: "Был ли момент сегодня, когда я почувствовал(а) тепло или поддержку? Что этому способствовало?", hints: [
+        "Вспомни тёплый момент. Кто или что его создал(а)?",
+        "Что именно тебя согрело? Слова? Взгляд? Молчание рядом?",
+        "Как ты можешь создать такой момент для себя или другого завтра?"
+      ]},
+      { question: "Ждал(а) ли я сегодня от других «чтения мыслей»? Сказал(а) ли я им о том, что мне нужно?", hints: [
+        "Был ли момент, когда ты обиделся(лась) на то, что кто-то не понял тебя без слов?",
+        "Попросил(а) ли ты о том, что тебе было нужно?",
+        "Если не попросил(а) — что тебя остановило?"
+      ]},
+      { question: "Если я чувствую одиночество сегодня, это объективное отсутствие людей или присутствие людей без глубины контакта?", hints: [
+        "Сколько людей было рядом сегодня? А сколько из них видели тебя настоящего(ей)?",
+        "Ты был(а) в компании, но чувствовал(а) себя одиноко? Почему?",
+        "Что нужно, чтобы почувствовать глубину контакта?"
+      ]},
+      { question: "С кем сегодня я был(а) собой настоящим(ей)? Что мне дало это ощущение безопасности?", hints: [
+        "Назови человека или людей, с кем ты сегодня не играл(а) роль.",
+        "Что именно в этом общении позволило тебе расслабиться?",
+        "Что ты чувствовал(а) после этого общения?"
+      ]},
+      { question: "Кому сегодня стало лучше от того, что я существую?", hints: [
+        "Кого ты сегодня порадовал(а)? Даже если это был прохожий, которому ты улыбнулся(лась).",
+        "Чей день стал легче из-за тебя?",
+        "Если никто не приходит на ум — что ты можешь сделать завтра для этого?"
+      ]},
+      { question: "Был ли сегодня момент, когда я хотел(а) получить поддержку, но не попросил(а)? Что меня остановило?", hints: [
+        "Вспомни момент, когда тебе было тяжело или грустно. Ты попросил(а) о помощи?",
+        "Если нет — что тебя остановило? Страх показаться слабым? Нежелание обременять?",
+        "Что могло бы случиться, если бы ты попросил(а)?"
+      ]},
+      { question: "Если бы я сегодня проявил(а) на 10% больше уязвимости с близким человеком, что бы изменилось?", hints: [
+        "Что ты сегодня скрыл(а) от близкого? Чувство, страх, усталость?",
+        "Если бы ты поделился(лась) этим — как бы это повлияло на вашу близость?",
+        "Что самое страшное могло бы случиться? А самое хорошее?"
+      ]},
+    ],
+    universal: [
+      { question: "Что я думаю по этому поводу? Откуда у меня эта мысль?", hints: [
+        "Запиши эту мысль буквально, как она звучит в голове.",
+        "Когда ты впервые услышал(а) эту мысль? Кто её сказал?",
+        "Это факт или интерпретация?"
+      ]},
+      { question: "Какие доказательства подтверждают моё убеждение? А какие опровергают?", hints: [
+        "Составь два списка: «за» и «против». Будь честен(на).",
+        "Если бы это был суд, какие улики были бы у обвинения и защиты?",
+        "Есть ли доказательства, которые ты обычно игнорируешь?"
+      ]},
+      { question: "Есть ли другой способ посмотреть на эту ситуацию?", hints: [
+        "Как бы на это посмотрел человек, который тебя любит?",
+        "Как бы на это посмотрел человек, который не вовлечён эмоционально?",
+        "Что ты мог(ла) упустить из виду?"
+      ]},
+      { question: "Что я посоветовал(а) бы другу на моём месте?", hints: [
+        "Представь, что лучший друг пришёл к тебе с этой же ситуацией. Что бы ты ему сказал(а)?",
+        "Был(а) ли ты с собой так же добр(а), как с другом?",
+        "Напиши совет, который дал(а) бы другу, а потом прочитай его себе."
+      ]},
+      { question: "Что самое худшее может произойти? И насколько это вероятно на самом деле?", hints: [
+        "Назови самый страшный сценарий. Выпиши его.",
+        "Оцени вероятность этого сценария по шкале 1–10.",
+        "Даже если это случится — сможешь ли ты с этим справиться? Как?"
+      ]},
+      { question: "Если я оставлю всё как есть, где я буду через месяц? А через год?", hints: [
+        "Если ничего не менять, что будет с твоей ситуацией через месяц?",
+        "А через год? Устроит ли тебя это?",
+        "Если не устроит — какой самый маленький шаг можно сделать сегодня?"
+      ]},
+      { question: "Какое одно маленькое действие я могу сделать прямо сейчас?", hints: [
+        "Не думай о большом плане. Что займёт меньше 2 минут?",
+        "Что ты можешь сделать, даже если у тебя нет сил?",
+        "Сделай это прямо сейчас, пока читаешь эту подсказку."
+      ]},
+    ],
+  },
+  en: {
+    autonomy: [
+      { question: "Did I act today from my own values, or under the pressure of circumstances?", hints: [
+        "What was the most important decision today? What influenced it?",
+        "If no one were watching or judging, would you have done the same thing?",
+        "Name one situation where you felt an inner conflict. What won out?"
+      ]},
+      { question: "If I had complete freedom of choice, what of today's tasks would I keep — and what would I drop?", hints: [
+        "Imagine you have a magic wand. Which 1–2 tasks would disappear from your day?",
+        "Which tasks would you keep doing even if you didn't have to?",
+        "What did you do today simply because you enjoy it?"
+      ]},
+      { question: "At what moments did I feel 'I have to' rather than 'I want to'? Why?", hints: [
+        "Recall a moment when you sighed before doing something.",
+        "Whose voice was in your head: a parent, a boss, an inner critic?",
+        "If you asked yourself 'why do I have to do this?', what would the answer be?"
+      ]},
+      { question: "Did I do this because I wanted to, or because I had to?", hints: [
+        "Recall one concrete action today. What drove you in that moment?",
+        "If you removed the thought 'I have to', what would you choose to do?",
+        "Was there a moment when you did something with inner resistance? What exactly?"
+      ]},
+      { question: "What 'no' did I fail to say today that I should have said?", hints: [
+        "Whom or what did you want to refuse, but agreed to instead?",
+        "What did you feel in that moment?",
+        "If you had said 'no', what would have been the scariest thing about it? And the best?"
+      ]},
+      { question: "If I feel pressure, who or what is its source? Is that source real, or is it my assumption?", hints: [
+        "Did a specific person tell you 'you must', or did you decide that yourself?",
+        "If you ask honestly: what would happen if I didn't do this?",
+        "Imagine the source of pressure disappeared. What would you do differently?"
+      ]},
+      { question: "Can I consciously choose the obligations that feel like 'have-tos', to reclaim my autonomy?", hints: [
+        "Pick one obligation that weighs on you. Why are you doing it? What's your benefit in it?",
+        "If you say to yourself: 'I choose to do this because X matters to me' — does the feeling change?",
+        "Which obligation today was 100% your own choice?"
+      ]},
+      { question: "In which decisions today did I hand my power to another person or to circumstances?", hints: [
+        "Was there a decision today that you didn't actually make?",
+        "Did you agree to something while internally being against it?",
+        "If you had taken that decision into your own hands, what would you have changed?"
+      ]},
+      { question: "If I were given complete freedom for one day right now, what would I change in today's schedule?", hints: [
+        "What would you cross out first?",
+        "What would you add that definitely wasn't there today?",
+        "Whom would you spend time with? And from whom would you take a break?"
+      ]},
+      { question: "Whose voice plays in my head when I say 'I'm obligated'?", hints: [
+        "Does that voice resemble someone from your past? A parent, a teacher, an ex-partner?",
+        "What exactly does it say? Which words?",
+        "If that voice belonged to a kind friend, what would they say instead?"
+      ]},
+      { question: "What that I did today was a sincere choice of mine, even though it was hard?", hints: [
+        "Recall a moment when you could have taken the easier path but chose the harder one because it was more honest.",
+        "What did you do today that was clearly your own decision?",
+        "Even if the result isn't perfect — what did you choose for yourself?"
+      ]},
+    ],
+    competence: [
+      { question: "What challenge did I face today, and what did it teach me — even if I didn't handle it perfectly?", hints: [
+        "What was hard today? What did you feel in that moment?",
+        "Even if the result isn't what you wanted, what did you learn about yourself or the process?",
+        "If it happened again tomorrow, what would you do differently?"
+      ]},
+      { question: "In what way did I become slightly better today than yesterday?", hints: [
+        "It could be anything: a bit more patience, a bit faster, a bit calmer.",
+        "Compare with yesterday's self. Where is there progress, even microscopic?",
+        "What came easier today than usual?"
+      ]},
+      { question: "Which of my strengths helped me make progress today?", hints: [
+        "Which of your qualities worked for you today? Persistence? Flexibility? Empathy? Organization?",
+        "What did you do well today?",
+        "What do other people value in you? Did that show up today?"
+      ]},
+      { question: "What did I handle today, even if it was small? What proves that I'm effective?", hints: [
+        "It can be anything: got out of bed, replied to a hard email, cooked a meal, said 'no', calmed down after stress.",
+        "If nothing comes to mind, imagine your best friend listing your accomplishments for today. What would they name?",
+        "Don't look for 'great achievements'. Small things are also evidence."
+      ]},
+      { question: "Was there a task I avoided out of fear of failing? Is that fear real, or is it perfectionism?", hints: [
+        "Which task did you postpone today? What did you feel when you thought about it?",
+        "If you weren't afraid of making a mistake, would you have done it?",
+        "What would actually happen if you did it imperfectly?"
+      ]},
+      { question: "What did I do today that proved to me I'm capable of more than I thought?", hints: [
+        "Was there a moment when you surprised yourself?",
+        "What did you do that you didn't expect from yourself?",
+        "If you had told yourself in the morning that you'd do this — would you have believed it?"
+      ]},
+      { question: "If my best friend described their failure today using my words, would I tell them they're incompetent?", hints: [
+        "What words do you use about yourself when something goes wrong?",
+        "Would you say that to a friend?",
+        "What would you say to a friend instead? Try saying it to yourself."
+      ]},
+      { question: "Where was I too harsh on myself today, missing my real achievements?", hints: [
+        "What did you criticize yourself for today? And what could have been praised?",
+        "If someone else had done the same, would you judge them?",
+        "What did you do today but failed to give yourself credit for?"
+      ]},
+      { question: "Which task seemed difficult today, but I handled it anyway? How did I do it?", hints: [
+        "What seemed unbearable at the start of the day, but you did it?",
+        "What resources did you use? Time? Help? Patience?",
+        "What exactly helped you not give up?"
+      ]},
+      { question: "What did I do for the first time today, or learn to do better?", hints: [
+        "Was there an experience today that you hadn't had before?",
+        "What did you do today faster, easier, or more consciously than usual?",
+        "Even if it's a small step — what did you master?"
+      ]},
+      { question: "If I looked at my day through the eyes of an outside observer, which moments would seem like proof of my effectiveness?", hints: [
+        "Imagine you're watching a film about your day. Which scenes would show that the main character is coping?",
+        "What would an impartial observer notice?",
+        "Which actions today were effective, even if you don't feel it?"
+      ]},
+      { question: "What small step did I take today toward a skill I want to develop?", hints: [
+        "Is there a skill you're developing? What did you do for it today?",
+        "It could be 5 minutes of practice, one letter read, one time you held back an emotion.",
+        "If you didn't do anything — what could you do tomorrow in 2 minutes?"
+      ]},
+    ],
+    relatedness: [
+      { question: "Was I genuine in my interactions today, or was I playing a role?", hints: [
+        "Was there a moment when you said something other than what you thought?",
+        "With whom were you your true self today?",
+        "If you wore a 'mask' — why? What were you trying to protect?"
+      ]},
+      { question: "Whom did I help today, or who helped me feel truly understood?", hints: [
+        "Was there a moment when you supported someone?",
+        "Was there a moment when someone really heard you?",
+        "What exactly made that moment warm?"
+      ]},
+      { question: "How did my actions today affect the people I care about?", hints: [
+        "What did you do today that affected loved ones? Even if it's small.",
+        "How did your mood or actions reflect on someone important?",
+        "If they described your influence on their day, what would they say?"
+      ]},
+      { question: "Was there a moment today when I felt warmth or support? What made it possible?", hints: [
+        "Recall a warm moment. Who or what created it?",
+        "What exactly warmed you? Words? A look? Silence nearby?",
+        "How can you create such a moment for yourself or another tomorrow?"
+      ]},
+      { question: "Did I expect 'mind-reading' from others today? Did I tell them what I needed?", hints: [
+        "Was there a moment when you got upset that someone didn't understand you without words?",
+        "Did you ask for what you needed?",
+        "If you didn't — what stopped you?"
+      ]},
+      { question: "If I feel lonely today, is it the objective absence of people, or the presence of people without depth of contact?", hints: [
+        "How many people were around you today? And how many of them saw the real you?",
+        "Were you in company but felt lonely? Why?",
+        "What's needed to feel depth of contact?"
+      ]},
+      { question: "With whom was I my true self today? What gave me that sense of safety?", hints: [
+        "Name the person or people with whom you didn't play a role today.",
+        "What exactly in that interaction allowed you to relax?",
+        "What did you feel after that interaction?"
+      ]},
+      { question: "Whose life got better today because I exist?", hints: [
+        "Whom did you bring joy to today? Even if it was a passerby you smiled at.",
+        "Whose day became easier because of you?",
+        "If no one comes to mind — what can you do tomorrow for that?"
+      ]},
+      { question: "Was there a moment today when I wanted support but didn't ask? What stopped me?", hints: [
+        "Recall a moment when it was hard or sad. Did you ask for help?",
+        "If not — what stopped you? Fear of seeming weak? Not wanting to burden anyone?",
+        "What might have happened if you had asked?"
+      ]},
+      { question: "If I had shown 10% more vulnerability with a close person today, what would have changed?", hints: [
+        "What did you hide from someone close today? A feeling, a fear, fatigue?",
+        "If you had shared it — how would it have affected your closeness?",
+        "What's the worst that could have happened? And the best?"
+      ]},
+    ],
+    universal: [
+      { question: "What do I think about this? Where does that thought come from?", hints: [
+        "Write down that thought literally, the way it sounds in your head.",
+        "When did you first hear that thought? Who said it?",
+        "Is it a fact or an interpretation?"
+      ]},
+      { question: "What evidence supports my belief? And what contradicts it?", hints: [
+        "Make two lists: 'for' and 'against'. Be honest.",
+        "If this were a court, what evidence would the prosecution and defense have?",
+        "Is there evidence you usually ignore?"
+      ]},
+      { question: "Is there another way to look at this situation?", hints: [
+        "How would someone who loves you look at this?",
+        "How would someone who isn't emotionally involved look at this?",
+        "What might you have overlooked?"
+      ]},
+      { question: "What would I advise a friend in my place?", hints: [
+        "Imagine your best friend came to you with the same situation. What would you say?",
+        "Were you as kind to yourself as you would be to a friend?",
+        "Write down the advice you'd give a friend, then read it to yourself."
+      ]},
+      { question: "What's the worst that could happen? And how likely is it really?", hints: [
+        "Name the scariest scenario. Write it out.",
+        "Rate the probability of that scenario on a 1–10 scale.",
+        "Even if it happens — could you cope with it? How?"
+      ]},
+      { question: "If I leave everything as it is, where will I be in a month? In a year?", hints: [
+        "If nothing changes, where will your situation be in a month?",
+        "And in a year? Does that suit you?",
+        "If not — what's the smallest step you can take today?"
+      ]},
+      { question: "What is one small action I can take right now?", hints: [
+        "Don't think about the big plan. What takes less than 2 minutes?",
+        "What can you do even if you have no energy?",
+        "Do it right now, while you're reading this hint."
+      ]},
+    ],
+  },
+};
+
 // ── UI STRINGS ────────────────────────────────────────────────────────────
 const ruUI = {
   save: "Сохранить",

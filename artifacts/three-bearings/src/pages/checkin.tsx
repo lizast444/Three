@@ -4,7 +4,8 @@ import { format, subDays } from "date-fns";
 import { ru, enUS } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
 import { RefreshCw, Save, ChevronRight, BookOpen, X, List, Plus, Trash2, CheckCheck } from "lucide-react";
-import { SPHERES, LIBRARY_QUESTIONS } from "@/lib/constants";
+import { SPHERES } from "@/lib/constants";
+import { LIBRARY_QUESTIONS_I18N } from "@/lib/i18n";
 import { SOCRATIC_POOL_I18N, INSPIRATION_IDEAS_I18N } from "@/lib/i18n";
 import { useApp } from "@/contexts/app-context";
 import {
@@ -156,10 +157,10 @@ function DeepDiveModal({ sphere, date, onClose }: {
   sphere: SphereKey; date: string; onClose: () => void;
 }) {
   const { toast } = useToast();
-  const { T } = useApp();
+  const { T, lang } = useApp();
   const config = SPHERES[sphere];
   const Icon = config.icon;
-  const questions = LIBRARY_QUESTIONS[sphere] ?? [];
+  const questions = LIBRARY_QUESTIONS_I18N[lang][sphere] ?? [];
   const sphereLabel = T[`sphere_${sphere}` as keyof typeof T] as string;
   const [answers, setAnswers] = useState<Record<number, string>>(() => loadDeepDiveFromStorage(date, sphere));
   const filledCount = Object.values(answers).filter(v => v.trim()).length;
