@@ -1,1 +1,2 @@
 - [Offline-only product scope](offline-product-scope.md) — Keep Three Bearings user data on-device; do not add server sync.
+- [Expo package maturity gate](expo-package-maturity.md) — If the registry blocks a fresh SDK patch, use an earlier same-SDK release rather than bypassing the release-age gate.

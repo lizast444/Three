@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { ScoreSlider } from '@/components/ScoreSlider';
 import { NEEDS, NeedId } from '@/constants/needs';
 import {
   DailyEntry,
@@ -67,7 +68,6 @@ export default function CheckinScreen() {
     yesterdayReview: '',
   };
   const [savedLabel, setSavedLabel] = useState(false);
-  const [scoreTrackWidth, setScoreTrackWidth] = useState(1);
   const [customActionFor, setCustomActionFor] = useState<NeedId | null>(null);
   const [customActionDraft, setCustomActionDraft] = useState('');
 
@@ -146,15 +146,6 @@ export default function CheckinScreen() {
         },
       };
     });
-
-  const setScoreFromTrack = (need: NeedId, locationX: number) => {
-    const score = Math.max(0, Math.min(10, Math.round((locationX / scoreTrackWidth) * 10)));
-    update((current) =>
-      current.scores[need] === score
-        ? current
-        : { ...current, scores: { ...current.scores, [need]: score } },
-    );
-  };
 
   const addCustomAction = (need: NeedId) => {
     const action = customActionDraft.trim();
@@ -284,54 +275,24 @@ export default function CheckinScreen() {
                   {language === 'ru' ? 'ПОЛНОСТЬЮ' : 'FULLY'}
                 </Text>
               </View>
-              <View
-                accessibilityRole="adjustable"
-                accessibilityLabel={t[`sphere_${need}`]}
-                accessibilityValue={{ min: 0, max: 10, now: entry.scores[need] }}
-                accessibilityActions={[
-                  { name: 'increment', label: language === 'ru' ? 'Увеличить' : 'Increase' },
-                  { name: 'decrement', label: language === 'ru' ? 'Уменьшить' : 'Decrease' },
-                ]}
-                onAccessibilityAction={(event) => {
-                  const delta = event.nativeEvent.actionName === 'increment' ? 1 : -1;
-                  update((current) => ({
-                    ...current,
-                    scores: {
-                      ...current.scores,
-                      [need]: Math.max(0, Math.min(10, current.scores[need] + delta)),
-                    },
-                  }));
-                }}
-                onLayout={(event) => setScoreTrackWidth(Math.max(1, event.nativeEvent.layout.width))}
-                onStartShouldSetResponder={() => true}
-                onMoveShouldSetResponder={() => true}
-                onResponderGrant={(event) => setScoreFromTrack(need, event.nativeEvent.locationX)}
-                onResponderMove={(event) => setScoreFromTrack(need, event.nativeEvent.locationX)}
-                style={styles.scoreTouchTarget}
-              >
-                <View
-                  pointerEvents="none"
-                  style={[styles.scoreTrack, { backgroundColor: palette.secondary }]}
-                >
-                  <View
-                    style={[
-                      styles.scoreFill,
-                      { width: `${entry.scores[need] * 10}%`, backgroundColor: tint },
-                    ]}
-                  />
-                  <View
-                    style={[
-                      styles.scoreThumb,
-                      {
-                        left: `${entry.scores[need] * 10}%`,
-                        borderColor: tint,
-                        backgroundColor: palette.card,
-                        shadowColor: palette.foreground,
-                      },
-                    ]}
-                  />
-                </View>
-              </View>
+              <ScoreSlider
+                value={entry.scores[need]}
+                label={t[`sphere_${need}`]}
+                incrementLabel={language === 'ru' ? 'Увеличить' : 'Increase'}
+                decrementLabel={language === 'ru' ? 'Уменьшить' : 'Decrease'}
+                accentColor={tint}
+                trackColor={palette.secondary}
+                thumbColor={palette.card}
+                shadowColor={palette.foreground}
+                testID={`score-slider-${need}`}
+                onValueChange={(score) =>
+                  update((current) =>
+                    current.scores[need] === score
+                      ? current
+                      : { ...current, scores: { ...current.scores, [need]: score } },
+                  )
+                }
+              />
             </View>
             </Card>
           </Animated.View>
@@ -579,21 +540,6 @@ const styles = StyleSheet.create({
   scoreBlock: { gap: 12, paddingTop: 1 },
   scoreLabels: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   scoreEndLabel: { fontSize: 10, fontWeight: '600', letterSpacing: 0.65 },
-  scoreTouchTarget: { height: 34, justifyContent: 'center', position: 'relative' },
-  scoreTrack: { height: 5, borderRadius: 6, position: 'absolute', left: 0, right: 0, overflow: 'visible' as const },
-  scoreFill: { height: '100%', borderRadius: 6, position: 'absolute', top: 0 },
-  scoreThumb: {
-    position: 'absolute',
-    top: -6,
-    marginLeft: -9,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 1.5,
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
   questionBox: { gap: 9, padding: 14, borderRadius: 16 },
   smallLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.7, textTransform: 'uppercase' },
   question: { fontFamily: 'Lora_400Regular_Italic', fontSize: 17, lineHeight: 26 },

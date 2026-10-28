@@ -1,7 +1,17 @@
-import React from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
-import { Lang, UI } from '@/data/translations';
-import { ThemeMode, useOfflineStore } from '@/context/offline-store';
+import React, { useState } from 'react';
+import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import type { Lang } from '@/data/translations';
+import { UI } from '@/data/translations';
+import {
+  parseBackupFile,
+  useOfflineStore,
+  type OfflineState,
+  type ThemeMode,
+} from '@/context/offline-store';
 import {
   AppButton,
   BodyText,
@@ -12,16 +22,79 @@ import {
 } from '@/components/primitives';
 import { useAppColors } from '@/hooks/useAppColors';
 
+type SettingsIcon =
+  | 'shield'
+  | 'globe'
+  | 'moon'
+  | 'info'
+  | 'check-circle'
+  | 'book-open'
+  | 'bar-chart-2'
+  | 'database'
+  | 'download'
+  | 'upload';
+
+function SettingsHeading({ icon, title }: { icon: SettingsIcon; title: string }) {
+  const palette = useAppColors();
+  return (
+    <View style={styles.sectionHeading}>
+      <View style={[styles.sectionIcon, { backgroundColor: palette.warmSurface }]}>
+        <Feather name={icon} size={16} color={palette.primary} />
+      </View>
+      <SectionTitle>{title}</SectionTitle>
+    </View>
+  );
+}
+
+function DataActionButton({
+  icon,
+  label,
+  onPress,
+  disabled,
+  testID,
+}: {
+  icon: 'download' | 'upload';
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+  testID: string;
+}) {
+  const palette = useAppColors();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      disabled={disabled}
+      onPress={onPress}
+      testID={testID}
+      style={({ pressed }) => [
+        styles.dataAction,
+        {
+          backgroundColor: palette.secondary,
+          borderColor: palette.border,
+          opacity: disabled ? 0.5 : pressed ? 0.75 : 1,
+        },
+      ]}
+    >
+      <Feather name={icon} size={16} color={palette.primary} />
+      <Text style={[styles.dataActionText, { color: palette.foreground }]}>{label}</Text>
+    </Pressable>
+  );
+}
+
 export default function SettingsScreen() {
   const {
     data,
     saveError,
     updateSettings,
     resetAll,
+    replaceData,
   } = useOfflineStore();
   const palette = useAppColors();
   const language = data.settings.language;
   const t = UI[language];
+  const [busy, setBusy] = useState(false);
+  const [pendingImport, setPendingImport] = useState<OfflineState | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const copy =
     language === 'ru'
       ? {
@@ -31,6 +104,38 @@ export default function SettingsScreen() {
           language: 'Язык',
           theme: 'Тема',
           system: 'Как в системе',
+          about: 'Как пользоваться',
+          aboutDescription: 'Three Bearings помогает замечать, что поддерживает автономию, развитие и близость к людям.',
+          backup: 'Резервная копия',
+          backupDescription: 'Сохраните записи в JSON-файл или восстановите их из ранее созданной копии.',
+          exportData: 'Экспортировать',
+          importData: 'Импортировать',
+          working: 'Подождите…',
+          exportComplete: 'Файл резервной копии готов.',
+          exportError: 'Не удалось создать файл резервной копии.',
+          importReady: 'Файл проверен. Просмотрите данные перед восстановлением.',
+          importError: 'Не удалось прочитать файл. Выберите корректную копию Three Bearings.',
+          importWarning: 'Восстановление полностью заменит текущие записи, ответы, заметки и настройки.',
+          replace: 'Заменить данные',
+          importComplete: 'Резервная копия восстановлена на этом устройстве.',
+          importSaveError: 'Не удалось сохранить восстановленные данные на устройстве.',
+          onboardingSteps: [
+            {
+              icon: 'check-circle' as const,
+              title: 'Сегодня',
+              description: 'Оцените три сферы, ответьте на вопросы и выберите шаг на завтра.',
+            },
+            {
+              icon: 'book-open' as const,
+              title: 'Библиотека',
+              description: 'Ищите вопросы для размышления, сохраняйте подсказки и ответы.',
+            },
+            {
+              icon: 'bar-chart-2' as const,
+              title: 'Журнал и аналитика',
+              description: 'Возвращайтесь к прошлым дням и замечайте изменения со временем.',
+            },
+          ],
           storage: 'Локальное хранилище',
           recordCount: 'Дней в журнале',
           noteCount: 'Заметок в библиотеке',
@@ -48,6 +153,38 @@ export default function SettingsScreen() {
           language: 'Language',
           theme: 'Theme',
           system: 'System',
+          about: 'How to use the app',
+          aboutDescription: 'Three Bearings helps you notice what supports autonomy, growth, and connection.',
+          backup: 'Backup',
+          backupDescription: 'Save your entries to a JSON file or restore an earlier backup.',
+          exportData: 'Export data',
+          importData: 'Import data',
+          working: 'Please wait…',
+          exportComplete: 'Backup file is ready.',
+          exportError: 'Could not create a backup file.',
+          importReady: 'The file is valid. Review it before restoring.',
+          importError: 'Could not read the file. Choose a valid Three Bearings backup.',
+          importWarning: 'Restoring will replace current entries, answers, notes, and settings.',
+          replace: 'Replace data',
+          importComplete: 'Backup restored on this device.',
+          importSaveError: 'Could not save the restored data to this device.',
+          onboardingSteps: [
+            {
+              icon: 'check-circle' as const,
+              title: 'Today',
+              description: 'Rate three needs, reflect with a question, and choose a step for tomorrow.',
+            },
+            {
+              icon: 'book-open' as const,
+              title: 'Library',
+              description: 'Browse reflection prompts, hints, and saved answers.',
+            },
+            {
+              icon: 'bar-chart-2' as const,
+              title: 'Journal and analytics',
+              description: 'Review past days and notice patterns over time.',
+            },
+          ],
           storage: 'Local storage',
           recordCount: 'Days in journal',
           noteCount: 'Library notes',
@@ -75,21 +212,119 @@ export default function SettingsScreen() {
   const changeLanguage = (value: Lang) =>
     updateSettings((settings) => ({ ...settings, language: value }));
 
+  const exportBackup = async () => {
+    setBusy(true);
+    setNotice(null);
+    try {
+      const contents = JSON.stringify(
+        {
+          app: 'three-bearings-offline',
+          backupVersion: 1,
+          exportedAt: new Date().toISOString(),
+          data,
+        },
+        null,
+        2,
+      );
+      const fileName = `three-bearings-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      if (Platform.OS === 'web') {
+        const blob = new Blob([contents], { type: 'application/json;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } else {
+        if (!FileSystem.cacheDirectory) throw new Error('App cache is unavailable.');
+        const uri = `${FileSystem.cacheDirectory}${fileName}`;
+        await FileSystem.writeAsStringAsync(uri, contents, { encoding: 'utf8' });
+        if (!(await Sharing.isAvailableAsync())) throw new Error('File sharing is unavailable.');
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/json',
+          dialogTitle: copy.exportData,
+        });
+      }
+      setNotice(copy.exportComplete);
+    } catch {
+      setNotice(copy.exportError);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const chooseBackup = async () => {
+    setBusy(true);
+    setNotice(null);
+    setPendingImport(null);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/json',
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+      if (result.canceled) return;
+      const asset = result.assets[0];
+      const contents =
+        Platform.OS === 'web' && asset.file
+          ? await asset.file.text()
+          : await FileSystem.readAsStringAsync(asset.uri, { encoding: 'utf8' });
+      setPendingImport(parseBackupFile(contents));
+      setNotice(copy.importReady);
+    } catch {
+      setNotice(copy.importError);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmImport = async () => {
+    if (!pendingImport) return;
+    setBusy(true);
+    setNotice(null);
+    try {
+      await replaceData(pendingImport);
+      setPendingImport(null);
+      setNotice(copy.importComplete);
+    } catch {
+      setNotice(copy.importSaveError);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <Screen title={t.settings_title} subtitle={t.settings_subtitle}>
       <StorageBanner message={saveError ? (language === 'ru' ? 'Не удалось сохранить настройки. Проверьте свободное место.' : 'Could not save settings. Check storage space.') : null} />
       <Card style={styles.privacyCard}>
-        <View style={styles.privacyHeading}>
-          <View style={[styles.offlineDot, { backgroundColor: palette.autonomy }]} />
-          <Text style={[styles.privacyTitle, { color: palette.foreground }]}>{copy.localOnly}</Text>
-        </View>
+        <SettingsHeading icon="shield" title={copy.localOnly} />
         <BodyText>{copy.privacy}</BodyText>
         <Text style={[styles.cacheNote, { color: palette.mutedForeground }]}>{copy.cache}</Text>
         <Text style={[styles.noCloud, { color: palette.autonomy }]}>{copy.noCloud}</Text>
       </Card>
 
       <Card>
-        <SectionTitle>{copy.language}</SectionTitle>
+        <SettingsHeading icon="info" title={copy.about} />
+        <BodyText muted>{copy.aboutDescription}</BodyText>
+        <View style={styles.guideList}>
+          {copy.onboardingSteps.map((step) => (
+            <View key={step.title} style={styles.guideRow}>
+              <View style={[styles.guideIcon, { backgroundColor: palette.secondary }]}>
+                <Feather name={step.icon} size={16} color={palette.primary} />
+              </View>
+              <View style={styles.guideCopy}>
+                <Text style={[styles.guideTitle, { color: palette.foreground }]}>{step.title}</Text>
+                <Text style={[styles.guideDescription, { color: palette.mutedForeground }]}>
+                  {step.description}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      </Card>
+
+      <Card>
+        <SettingsHeading icon="globe" title={copy.language} />
         <View style={styles.optionRow}>
           <AppButton
             compact
@@ -107,7 +342,7 @@ export default function SettingsScreen() {
       </Card>
 
       <Card>
-        <SectionTitle>{copy.theme}</SectionTitle>
+        <SettingsHeading icon="moon" title={copy.theme} />
         <View style={styles.optionRow}>
           {(['system', 'light', 'dark'] as ThemeMode[]).map((theme) => {
             const label =
@@ -131,7 +366,67 @@ export default function SettingsScreen() {
       </Card>
 
       <Card>
-        <SectionTitle>{copy.storage}</SectionTitle>
+        <SettingsHeading icon="database" title={copy.backup} />
+        <BodyText muted>{copy.backupDescription}</BodyText>
+        <View style={styles.dataActionRow}>
+          <DataActionButton
+            icon="download"
+            label={busy ? copy.working : copy.exportData}
+            onPress={exportBackup}
+            disabled={busy}
+            testID="export-backup"
+          />
+          <DataActionButton
+            icon="upload"
+            label={busy ? copy.working : copy.importData}
+            onPress={chooseBackup}
+            disabled={busy}
+            testID="import-backup"
+          />
+        </View>
+        {notice ? (
+          <Text
+            accessibilityRole="alert"
+            style={[
+              styles.feedback,
+              { color: notice === copy.exportComplete || notice === copy.importComplete ? palette.autonomy : palette.mutedForeground },
+            ]}
+          >
+            {notice}
+          </Text>
+        ) : null}
+        {pendingImport ? (
+          <View style={[styles.importConfirmation, { borderColor: palette.border }]}>
+            <Text style={[styles.importWarning, { color: palette.foreground }]}>
+              {copy.importWarning}
+            </Text>
+            <Text style={[styles.importCounts, { color: palette.mutedForeground }]}>
+              {copy.recordCount}: {Object.keys(pendingImport.days).length} · {copy.noteCount}:{' '}
+              {pendingImport.libraryNotes.length}
+            </Text>
+            <View style={styles.confirmActions}>
+              <AppButton
+                compact
+                variant="danger"
+                label={busy ? copy.working : copy.replace}
+                onPress={confirmImport}
+                disabled={busy}
+                testID="confirm-import-backup"
+              />
+              <AppButton
+                compact
+                label={copy.cancel}
+                onPress={() => setPendingImport(null)}
+                disabled={busy}
+                testID="cancel-import-backup"
+              />
+            </View>
+          </View>
+        ) : null}
+      </Card>
+
+      <Card>
+        <SettingsHeading icon="database" title={copy.storage} />
         <View style={styles.countRow}>
           <BodyText muted>{copy.recordCount}</BodyText>
           <Text style={[styles.countValue, { color: palette.foreground }]}>
@@ -161,13 +456,26 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   privacyCard: { gap: 10 },
-  privacyHeading: { flexDirection: 'row', alignItems: 'center', gap: 9 },
-  offlineDot: { width: 9, height: 9, borderRadius: 5 },
-  privacyTitle: { fontSize: 15, fontWeight: '700' },
+  sectionHeading: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  sectionIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   cacheNote: { fontSize: 12, lineHeight: 19 },
   noCloud: { fontSize: 12, fontWeight: '600' },
+  guideList: { gap: 14 },
+  guideRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 11 },
+  guideIcon: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  guideCopy: { flex: 1, gap: 3 },
+  guideTitle: { fontSize: 13, fontWeight: '700' },
+  guideDescription: { fontSize: 12, lineHeight: 18 },
   optionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   countRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   countValue: { fontSize: 14, fontWeight: '700' },
+  dataActionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
+  dataAction: { flex: 1, minWidth: '44%', minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 10, borderWidth: 1, borderRadius: 14 },
+  dataActionText: { fontSize: 13, fontWeight: '600', textAlign: 'center' },
+  feedback: { fontSize: 12, lineHeight: 18 },
+  importConfirmation: { gap: 9, borderWidth: 1, borderRadius: 15, padding: 12 },
+  importWarning: { fontSize: 13, lineHeight: 19, fontWeight: '600' },
+  importCounts: { fontSize: 12, lineHeight: 18 },
+  confirmActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   version: { textAlign: 'center', fontSize: 11, paddingTop: 2 },
 });

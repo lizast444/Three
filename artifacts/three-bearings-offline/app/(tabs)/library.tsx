@@ -162,15 +162,7 @@ export default function LibraryScreen() {
                 style={[
                   styles.questionCard,
                   {
-                    backgroundColor: category === 'universal'
-                      ? palette.warmSurface
-                      : palette[
-                          category === 'autonomy'
-                            ? 'autonomySoft'
-                            : category === 'competence'
-                              ? 'competenceSoft'
-                              : 'relatednessSoft'
-                        ],
+                    backgroundColor: palette.card,
                     borderColor: palette.border,
                   },
                 ]}

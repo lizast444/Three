@@ -10,7 +10,7 @@ import React, {
   useState,
 } from 'react';
 import type { Lang } from '@/data/translations';
-import type { CategoryId, NeedId } from '@/constants/needs';
+import { CATEGORIES, NEEDS, type CategoryId, type NeedId } from '@/constants/needs';
 
 const STORAGE_KEY = 'three-bearings.local.v1';
 
@@ -95,22 +95,131 @@ export function shiftDateKey(date: string, amount: number): string {
   return localDateKey(result);
 }
 
-function parseStoredState(raw: string): OfflineState {
-  const parsed: unknown = JSON.parse(raw);
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isNeedId(value: unknown): value is NeedId {
+  return typeof value === 'string' && (NEEDS as readonly string[]).includes(value);
+}
+
+function isCategoryId(value: unknown): value is CategoryId {
+  return typeof value === 'string' && (CATEGORIES as readonly string[]).includes(value);
+}
+
+function hasValidIndexes(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    NEEDS.every(
+      (need) =>
+        typeof value[need] === 'number' &&
+        Number.isSafeInteger(value[need]) &&
+        (value[need] as number) >= 0,
+    )
+  );
+}
+
+function isScoreRecord(value: unknown): value is Record<NeedId, number> {
+  return (
+    isRecord(value) &&
+    NEEDS.every((need) => {
+      const score = value[need];
+      return (
+        typeof score === 'number' &&
+        Number.isInteger(score) &&
+        score >= 0 &&
+        score <= 10
+      );
+    })
+  );
+}
+
+function parseState(value: unknown): OfflineState {
+  if (!isRecord(value) || value.version !== 1) {
+    throw new Error('This backup format is not supported.');
+  }
+  const settings = value.settings;
+  const days = value.days;
+  const libraryNotes = value.libraryNotes;
   if (
-    !parsed ||
-    typeof parsed !== 'object' ||
-    (parsed as OfflineState).version !== 1 ||
-    typeof (parsed as OfflineState).days !== 'object' ||
-    !Array.isArray((parsed as OfflineState).libraryNotes)
+    !isRecord(settings) ||
+    (settings.language !== 'ru' && settings.language !== 'en') ||
+    !['system', 'light', 'dark'].includes(String(settings.theme)) ||
+    !hasValidIndexes(settings.questionIndexes) ||
+    !hasValidIndexes(settings.ideaIndexes) ||
+    !isRecord(days) ||
+    !Array.isArray(libraryNotes)
   ) {
-    throw new Error('Stored app data has an unsupported format.');
+    throw new Error('The backup is incomplete or damaged.');
   }
-  const state = parsed as OfflineState;
-  if (!state.settings || !state.settings.questionIndexes || !state.settings.ideaIndexes) {
-    throw new Error('Stored settings are incomplete.');
+
+  const validDays = Object.entries(days).every(([date, rawEntry]) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !isRecord(rawEntry)) return false;
+    if (
+      rawEntry.date !== date ||
+      typeof rawEntry.note !== 'string' ||
+      typeof rawEntry.yesterdayReview !== 'string' ||
+      !isScoreRecord(rawEntry.scores) ||
+      !isRecord(rawEntry.answers) ||
+      !Object.entries(rawEntry.answers).every(
+        ([need, answers]) =>
+          isNeedId(need) &&
+          Array.isArray(answers) &&
+          answers.every(
+            (answer) =>
+              isRecord(answer) &&
+              typeof answer.question === 'string' &&
+              typeof answer.answer === 'string',
+          ),
+      ) ||
+      !Array.isArray(rawEntry.noteTags) ||
+      !rawEntry.noteTags.every(isNeedId) ||
+      !Array.isArray(rawEntry.microActions) ||
+      !rawEntry.microActions.every(
+        (action) =>
+          isRecord(action) &&
+          isNeedId(action.sphere) &&
+          typeof action.action === 'string',
+      )
+    ) {
+      return false;
+    }
+    return true;
+  });
+  const validNotes = libraryNotes.every(
+    (note) =>
+      isRecord(note) &&
+      typeof note.id === 'string' &&
+      isCategoryId(note.category) &&
+      typeof note.question === 'string' &&
+      typeof note.content === 'string' &&
+      typeof note.createdAt === 'string',
+  );
+  if (!validDays || !validNotes) {
+    throw new Error('The backup is incomplete or damaged.');
   }
-  return state;
+  return value as unknown as OfflineState;
+}
+
+function parseStoredState(raw: string): OfflineState {
+  return parseState(JSON.parse(raw) as unknown);
+}
+
+export function parseBackupFile(raw: string): OfflineState {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw) as unknown;
+  } catch {
+    throw new Error('The selected file is not valid JSON.');
+  }
+  if (
+    !isRecord(parsed) ||
+    parsed.app !== 'three-bearings-offline' ||
+    parsed.backupVersion !== 1
+  ) {
+    throw new Error('This file is not a Three Bearings backup.');
+  }
+  return parseState(parsed.data);
 }
 
 interface StoreContextValue {
@@ -128,6 +237,7 @@ interface StoreContextValue {
   ) => void;
   deleteLibraryNote: (id: string) => void;
   resetAll: () => void;
+  replaceData: (next: OfflineState) => Promise<void>;
 }
 
 const StoreContext = createContext<StoreContextValue | null>(null);
@@ -232,6 +342,25 @@ export function OfflineStoreProvider({ children }: { children: ReactNode }) {
   );
 
   const resetAll = useCallback(() => commit(() => freshState()), [commit]);
+  const replaceData = useCallback(async (next: OfflineState) => {
+    dataRef.current = next;
+    setData(next);
+    const serialized = JSON.stringify(next);
+    const write = writeQueue.current
+      .catch(() => undefined)
+      .then(() => AsyncStorage.setItem(STORAGE_KEY, serialized));
+    writeQueue.current = write
+      .then(() => setSaveError(null))
+      .catch((error: unknown) => {
+        setSaveError(
+          error instanceof Error
+            ? error.message
+            : 'Could not save imported data to this device.',
+        );
+        throw error;
+      });
+    await writeQueue.current;
+  }, []);
   const retryHydration = useCallback(() => setLoadAttempt((value) => value + 1), []);
 
   const value = useMemo(
@@ -246,6 +375,7 @@ export function OfflineStoreProvider({ children }: { children: ReactNode }) {
       addLibraryNote,
       deleteLibraryNote,
       resetAll,
+      replaceData,
     }),
     [
       data,
@@ -258,6 +388,7 @@ export function OfflineStoreProvider({ children }: { children: ReactNode }) {
       addLibraryNote,
       deleteLibraryNote,
       resetAll,
+      replaceData,
     ],
   );
 
