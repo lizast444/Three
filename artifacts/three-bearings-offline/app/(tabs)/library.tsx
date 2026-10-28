@@ -38,7 +38,7 @@ export default function LibraryScreen() {
     language === 'ru'
       ? {
           saveAnswer: 'Сохранить ответ',
-          answer: 'Ответить на вопрос',
+          answer: 'Ответить',
           placeholder: 'Запишите свою мысль...',
           savedNotes: 'Мои заметки',
           noNotes: 'Сохранённые ответы и заметки появятся здесь.',
@@ -47,7 +47,7 @@ export default function LibraryScreen() {
         }
       : {
           saveAnswer: 'Save answer',
-          answer: 'Write an answer',
+          answer: 'Answer',
           placeholder: 'Write your reflection...',
           savedNotes: 'My notes',
           noNotes: 'Saved answers and notes will appear here.',

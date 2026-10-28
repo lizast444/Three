@@ -53,10 +53,10 @@ async function readPickedBackup(asset: DocumentPickerAsset): Promise<string> {
   try {
     return await FileSystem.readAsStringAsync(asset.uri, { encoding: 'utf8' });
   } catch (readError) {
-    if (!FileSystem.cacheDirectory || asset.uri.startsWith('file://')) throw readError;
+    if (!FileSystem.cacheDirectory) throw readError;
     const cachedUri = `${FileSystem.cacheDirectory}three-bearings-import-${Date.now()}.json`;
-    await FileSystem.copyAsync({ from: asset.uri, to: cachedUri });
     try {
+      await FileSystem.copyAsync({ from: asset.uri, to: cachedUri });
       return await FileSystem.readAsStringAsync(cachedUri, { encoding: 'utf8' });
     } finally {
       await FileSystem.deleteAsync(cachedUri, { idempotent: true }).catch(() => undefined);
@@ -560,7 +560,7 @@ const styles = StyleSheet.create({
   sectionIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   cacheNote: { fontSize: 12, lineHeight: 19 },
   noCloud: { fontSize: 12, fontWeight: '600' },
-  aboutCard: { padding: 0, overflow: 'hidden' },
+  aboutCard: { padding: 0, gap: 0, overflow: 'hidden' },
   aboutEyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 16, paddingVertical: 10 },
   aboutEyebrow: { fontSize: 12, fontWeight: '700', letterSpacing: 1.35 },
   aboutDivider: { height: StyleSheet.hairlineWidth, width: '100%' },
