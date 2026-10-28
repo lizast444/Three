@@ -208,18 +208,28 @@ function parseStoredState(raw: string): OfflineState {
 export function parseBackupFile(raw: string): OfflineState {
   let parsed: unknown;
   try {
-    parsed = JSON.parse(raw) as unknown;
+    parsed = JSON.parse(raw.replace(/^\uFEFF/, '').trim()) as unknown;
   } catch {
     throw new Error('The selected file is not valid JSON.');
   }
-  if (
-    !isRecord(parsed) ||
-    parsed.app !== 'three-bearings-offline' ||
-    parsed.backupVersion !== 1
-  ) {
+
+  if (!isRecord(parsed)) {
     throw new Error('This file is not a Three Bearings backup.');
   }
-  return parseState(parsed.data);
+
+  // Accept both the current export envelope and a raw local-state JSON backup.
+  // The latter is useful for files saved by earlier app builds.
+  if ('app' in parsed || 'backupVersion' in parsed) {
+    if (
+      parsed.app !== 'three-bearings-offline' ||
+      parsed.backupVersion !== 1
+    ) {
+      throw new Error('This file is not a Three Bearings backup.');
+    }
+    return parseState(parsed.data);
+  }
+
+  return parseState(parsed);
 }
 
 interface StoreContextValue {

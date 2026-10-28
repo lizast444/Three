@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
+import type { DocumentPickerAsset } from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import type { Lang } from '@/data/translations';
@@ -12,6 +13,7 @@ import {
   type OfflineState,
   type ThemeMode,
 } from '@/context/offline-store';
+import { NEEDS, type NeedId } from '@/constants/needs';
 import {
   AppButton,
   BodyText,
@@ -33,6 +35,34 @@ type SettingsIcon =
   | 'database'
   | 'download'
   | 'upload';
+
+const aboutNeedIcons = {
+  autonomy: 'wind',
+  competence: 'anchor',
+  relatedness: 'users',
+} as const;
+
+async function readPickedBackup(asset: DocumentPickerAsset): Promise<string> {
+  if (Platform.OS === 'web') {
+    if (asset.file) return asset.file.text();
+    const response = await fetch(asset.uri);
+    if (!response.ok) throw new Error('Could not read the selected file.');
+    return response.text();
+  }
+
+  try {
+    return await FileSystem.readAsStringAsync(asset.uri, { encoding: 'utf8' });
+  } catch (readError) {
+    if (!FileSystem.cacheDirectory || asset.uri.startsWith('file://')) throw readError;
+    const cachedUri = `${FileSystem.cacheDirectory}three-bearings-import-${Date.now()}.json`;
+    await FileSystem.copyAsync({ from: asset.uri, to: cachedUri });
+    try {
+      return await FileSystem.readAsStringAsync(cachedUri, { encoding: 'utf8' });
+    } finally {
+      await FileSystem.deleteAsync(cachedUri, { idempotent: true }).catch(() => undefined);
+    }
+  }
+}
 
 function SettingsHeading({ icon, title }: { icon: SettingsIcon; title: string }) {
   const palette = useAppColors();
@@ -114,7 +144,7 @@ export default function SettingsScreen() {
           exportComplete: 'Файл резервной копии готов.',
           exportError: 'Не удалось создать файл резервной копии.',
           importReady: 'Файл проверен. Просмотрите данные перед восстановлением.',
-          importError: 'Не удалось прочитать файл. Выберите корректную копию Three Bearings.',
+          importError: 'Не удалось прочитать файл. Выберите сохранённую JSON-копию Three Bearings.',
           importWarning: 'Восстановление полностью заменит текущие записи, ответы, заметки и настройки.',
           replace: 'Заменить данные',
           importComplete: 'Резервная копия восстановлена на этом устройстве.',
@@ -145,6 +175,18 @@ export default function SettingsScreen() {
           resetTitle: 'Очистить локальные данные?',
           saved: 'Настройки сохраняются на телефоне.',
           noCloud: 'Без аккаунта, синхронизации и серверной базы.',
+          aboutEyebrow: 'О ПРИЛОЖЕНИИ',
+          appName: 'Three Bearings',
+          appMeta: 'SDT SOCRATIC TRACKER · V1.0.0',
+          theoryTitle: 'Теория самодетерминации (SDT)',
+          theoryDescription: 'SDT — психологическая теория, утверждающая, что благополучие и внутренняя мотивация человека зависят от удовлетворения трёх базовых потребностей:',
+          needDescriptions: {
+            autonomy: 'Ощущение, что ты действуешь из собственных ценностей, а не под внешним давлением.',
+            competence: 'Уверенность в своих силах, рост и преодоление вызовов.',
+            relatedness: 'Подлинные, тёплые отношения с людьми, ощущение принятия.',
+          } satisfies Record<NeedId, string>,
+          methodTitle: 'Сократовский метод',
+          methodDescription: 'Метод исследования через вопросы, который помогает осознать скрытые убеждения, противоречия и новые перспективы. Вместо готовых ответов — уточняющие вопросы, которые ведут к собственному пониманию.',
         }
       : {
           privacy: 'Works without internet. Your journal, answers, tags, notes, and settings stay in this app on this phone.',
@@ -163,7 +205,7 @@ export default function SettingsScreen() {
           exportComplete: 'Backup file is ready.',
           exportError: 'Could not create a backup file.',
           importReady: 'The file is valid. Review it before restoring.',
-          importError: 'Could not read the file. Choose a valid Three Bearings backup.',
+          importError: 'Could not read the file. Choose a saved Three Bearings JSON backup.',
           importWarning: 'Restoring will replace current entries, answers, notes, and settings.',
           replace: 'Replace data',
           importComplete: 'Backup restored on this device.',
@@ -194,6 +236,18 @@ export default function SettingsScreen() {
           resetTitle: 'Clear local data?',
           saved: 'Settings are saved on this phone.',
           noCloud: 'No account, sync, or server database.',
+          aboutEyebrow: 'ABOUT THE APP',
+          appName: 'Three Bearings',
+          appMeta: 'SDT SOCRATIC TRACKER · V1.0.0',
+          theoryTitle: 'Self-Determination Theory (SDT)',
+          theoryDescription: 'SDT is a psychological theory that suggests well-being and inner motivation depend on satisfying three basic needs:',
+          needDescriptions: {
+            autonomy: 'Feeling that you act from your own values, not under external pressure.',
+            competence: 'Confidence in your abilities, growth, and meeting challenges.',
+            relatedness: 'Genuine, warm relationships with others and a sense of acceptance.',
+          } satisfies Record<NeedId, string>,
+          methodTitle: 'The Socratic method',
+          methodDescription: 'A way of exploring through questions that helps uncover hidden beliefs, contradictions, and new perspectives. Instead of ready-made answers, clarifying questions lead you to your own understanding.',
         };
 
   const confirmReset = () =>
@@ -216,16 +270,14 @@ export default function SettingsScreen() {
     setBusy(true);
     setNotice(null);
     try {
-      const contents = JSON.stringify(
-        {
-          app: 'three-bearings-offline',
-          backupVersion: 1,
-          exportedAt: new Date().toISOString(),
-          data,
-        },
-        null,
-        2,
-      );
+      const backup = {
+        app: 'three-bearings-offline',
+        backupVersion: 1,
+        exportedAt: new Date().toISOString(),
+        data,
+      };
+      const contents = JSON.stringify(backup, null, 2);
+      parseBackupFile(contents);
       const fileName = `three-bearings-backup-${new Date().toISOString().slice(0, 10)}.json`;
       if (Platform.OS === 'web') {
         const blob = new Blob([contents], { type: 'application/json;charset=utf-8' });
@@ -236,8 +288,9 @@ export default function SettingsScreen() {
         link.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       } else {
-        if (!FileSystem.cacheDirectory) throw new Error('App cache is unavailable.');
-        const uri = `${FileSystem.cacheDirectory}${fileName}`;
+        const exportDirectory = FileSystem.documentDirectory ?? FileSystem.cacheDirectory;
+        if (!exportDirectory) throw new Error('App storage is unavailable.');
+        const uri = `${exportDirectory}${fileName}`;
         await FileSystem.writeAsStringAsync(uri, contents, { encoding: 'utf8' });
         if (!(await Sharing.isAvailableAsync())) throw new Error('File sharing is unavailable.');
         await Sharing.shareAsync(uri, {
@@ -259,16 +312,14 @@ export default function SettingsScreen() {
     setPendingImport(null);
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: 'application/json',
+        type: '*/*',
         copyToCacheDirectory: true,
         multiple: false,
       });
       if (result.canceled) return;
-      const asset = result.assets[0];
-      const contents =
-        Platform.OS === 'web' && asset.file
-          ? await asset.file.text()
-          : await FileSystem.readAsStringAsync(asset.uri, { encoding: 'utf8' });
+      const asset = result.assets?.[0];
+      if (!asset) throw new Error('No file was selected.');
+      const contents = await readPickedBackup(asset);
       setPendingImport(parseBackupFile(contents));
       setNotice(copy.importReady);
     } catch {
@@ -303,23 +354,59 @@ export default function SettingsScreen() {
         <Text style={[styles.noCloud, { color: palette.autonomy }]}>{copy.noCloud}</Text>
       </Card>
 
-      <Card>
-        <SettingsHeading icon="info" title={copy.about} />
-        <BodyText muted>{copy.aboutDescription}</BodyText>
-        <View style={styles.guideList}>
-          {copy.onboardingSteps.map((step) => (
-            <View key={step.title} style={styles.guideRow}>
-              <View style={[styles.guideIcon, { backgroundColor: palette.secondary }]}>
-                <Feather name={step.icon} size={16} color={palette.primary} />
+      <Card style={styles.aboutCard}>
+        <View style={styles.aboutEyebrowRow}>
+          <Feather name="info" size={15} color={palette.mutedForeground} />
+          <Text style={[styles.aboutEyebrow, { color: palette.mutedForeground }]}>
+            {copy.aboutEyebrow}
+          </Text>
+        </View>
+        <View style={[styles.aboutDivider, { backgroundColor: palette.border }]} />
+        <View style={styles.aboutContent}>
+          <Text style={[styles.aboutAppName, { color: palette.foreground }]}>
+            {copy.appName}
+          </Text>
+          <Text style={[styles.aboutMeta, { color: palette.mutedForeground }]}>
+            {copy.appMeta}
+          </Text>
+          <Text style={[styles.aboutSubheading, { color: palette.foreground }]}>
+            {copy.theoryTitle}
+          </Text>
+          <Text style={[styles.aboutBody, { color: palette.mutedForeground }]}>
+            {copy.theoryDescription}
+          </Text>
+          <View style={styles.aboutNeedList}>
+            {NEEDS.map((need) => (
+              <View
+                key={need}
+                style={[
+                  styles.aboutNeedCard,
+                  { backgroundColor: palette[`${need}Soft`] },
+                ]}
+              >
+                <Feather
+                  name={aboutNeedIcons[need]}
+                  size={17}
+                  color={palette[need]}
+                  style={styles.aboutNeedIcon}
+                />
+                <View style={styles.aboutNeedCopy}>
+                  <Text style={[styles.aboutNeedTitle, { color: palette[need] }]}>
+                    {t[`sphere_${need}`]}
+                  </Text>
+                  <Text style={[styles.aboutNeedDescription, { color: palette.mutedForeground }]}>
+                    {copy.needDescriptions[need]}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.guideCopy}>
-                <Text style={[styles.guideTitle, { color: palette.foreground }]}>{step.title}</Text>
-                <Text style={[styles.guideDescription, { color: palette.mutedForeground }]}>
-                  {step.description}
-                </Text>
-              </View>
-            </View>
-          ))}
+            ))}
+          </View>
+          <Text style={[styles.aboutSubheading, { color: palette.foreground }]}>
+            {copy.methodTitle}
+          </Text>
+          <Text style={[styles.aboutBody, { color: palette.mutedForeground }]}>
+            {copy.methodDescription}
+          </Text>
         </View>
       </Card>
 
@@ -460,12 +547,21 @@ const styles = StyleSheet.create({
   sectionIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   cacheNote: { fontSize: 12, lineHeight: 19 },
   noCloud: { fontSize: 12, fontWeight: '600' },
-  guideList: { gap: 14 },
-  guideRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 11 },
-  guideIcon: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  guideCopy: { flex: 1, gap: 3 },
-  guideTitle: { fontSize: 13, fontWeight: '700' },
-  guideDescription: { fontSize: 12, lineHeight: 18 },
+  aboutCard: { padding: 0, overflow: 'hidden' },
+  aboutEyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 18, paddingVertical: 14 },
+  aboutEyebrow: { fontSize: 12, fontWeight: '700', letterSpacing: 1.35 },
+  aboutDivider: { height: StyleSheet.hairlineWidth, width: '100%' },
+  aboutContent: { padding: 18, gap: 12 },
+  aboutAppName: { fontFamily: 'Lora_500Medium', fontSize: 21 },
+  aboutMeta: { fontSize: 11, fontWeight: '600', letterSpacing: 0.8, marginTop: -7 },
+  aboutSubheading: { fontSize: 14, fontWeight: '700', marginTop: 9 },
+  aboutBody: { fontSize: 15, lineHeight: 24, marginTop: -3 },
+  aboutNeedList: { gap: 10, marginTop: 1, marginBottom: 1 },
+  aboutNeedCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 13, borderRadius: 19 },
+  aboutNeedIcon: { marginTop: 2, width: 18 },
+  aboutNeedCopy: { flex: 1, gap: 3 },
+  aboutNeedTitle: { fontSize: 13, fontWeight: '700' },
+  aboutNeedDescription: { fontSize: 13, lineHeight: 20 },
   optionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   countRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   countValue: { fontSize: 14, fontWeight: '700' },

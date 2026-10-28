@@ -182,6 +182,39 @@ export default function CheckinScreen() {
     }));
   };
 
+  const removeAction = (need: NeedId) => {
+    update((current) => ({
+      ...current,
+      microActions: current.microActions.filter((item) => item.sphere !== need),
+    }));
+    if (customActionFor === need) {
+      setCustomActionFor(null);
+      setCustomActionDraft('');
+    }
+  };
+
+  const replaceWithNextIdea = (need: NeedId) => {
+    const ideas = INSPIRATION_IDEAS_I18N[language][need];
+    const nextIndex = data.settings.ideaIndexes[need] % ideas.length;
+    update((current) => ({
+      ...current,
+      microActions: current.microActions.map((item) =>
+        item.sphere === need ? { ...item, action: ideas[nextIndex] } : item,
+      ),
+    }));
+    updateSettings((settings) => ({
+      ...settings,
+      ideaIndexes: {
+        ...settings.ideaIndexes,
+        [need]: (settings.ideaIndexes[need] + 1) % ideas.length,
+      },
+    }));
+    if (customActionFor === need) {
+      setCustomActionFor(null);
+      setCustomActionDraft('');
+    }
+  };
+
   const priorEntry = data.days[yesterday];
   const dateLabel = formatDate(today, language);
 
@@ -382,132 +415,141 @@ export default function CheckinScreen() {
       <Card>
         <SectionTitle>{t.checkin_micro_title}</SectionTitle>
         <BodyText muted>{t.checkin_micro_subtitle}</BodyText>
-        {NEEDS.map((need, needIndex) => {
-          const ideas = INSPIRATION_IDEAS_I18N[language][need];
-          const index = data.settings.ideaIndexes[need] % ideas.length;
-          const selected = entry.microActions.find((item) => item.sphere === need);
-          return (
-            <Animated.View
-              key={need}
-              entering={FadeInDown.duration(240).delay(needIndex * 55)}
-              style={[
-                styles.ideaBlock,
-                {
-                    backgroundColor: palette.card,
-                  borderColor: palette.border,
-                },
-              ]}
-            >
-              <View style={styles.ideaHeading}>
-                <View style={[styles.ideaIcon, { backgroundColor: palette.card }]}>
-                  <Feather name={needIcons[need]} size={15} color={palette[need]} />
-                </View>
-                <Text style={[styles.ideaSphere, { color: palette[need] }]}>
-                  {t[`sphere_${need}`]}
-                </Text>
-                {!selected ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={copy.otherIdea}
-                    testID={`other-action-idea-${need}`}
-                    onPress={() =>
-                      updateSettings((settings) => ({
-                        ...settings,
-                        ideaIndexes: {
-                          ...settings.ideaIndexes,
-                          [need]: (settings.ideaIndexes[need] + 1) % ideas.length,
-                        },
-                      }))
-                    }
-                    style={({ pressed }) => [
-                      styles.rotateIdea,
-                      pressed && styles.iconButtonPressed,
-                    ]}
-                  >
-                    <Feather name="refresh-cw" size={16} color={palette[need]} />
-                  </Pressable>
-                ) : null}
-              </View>
-              {selected ? (
-                <View style={styles.selectedAction}>
-                  <Feather name="check-circle" size={17} color={palette[need]} />
-                  <BodyText style={styles.selectedActionText}>{selected.action}</BodyText>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={copy.removeAction}
-                    testID={`remove-action-${need}`}
-                    onPress={() =>
-                      update((current) => ({
-                        ...current,
-                        microActions: current.microActions.filter((item) => item.sphere !== need),
-                      }))
-                    }
-                    style={({ pressed }) => [
-                      styles.removeActionButton,
-                      pressed && styles.iconButtonPressed,
-                    ]}
-                  >
-                    <Feather name="x" size={16} color={palette.mutedForeground} />
-                  </Pressable>
-                </View>
-              ) : (
-                <>
-                  <Animated.Text
-                    key={`${need}-${index}`}
-                    entering={FadeInDown.duration(220)}
-                    style={[styles.ideaText, { color: palette.foreground }]}
-                  >
-                    {ideas[index]}
-                  </Animated.Text>
-                  <AppButton
-                    compact
-                    label={copy.addAction}
-                    testID={`add-suggested-action-${need}`}
-                    onPress={() => addIdea(need)}
-                  />
-                </>
-              )}
-              {customActionFor === need ? (
-                <Animated.View entering={FadeInDown.duration(220)} style={styles.customActionForm}>
-                  <AppInput
-                    value={customActionDraft}
-                    onChangeText={setCustomActionDraft}
-                    placeholder={copy.ownActionPlaceholder}
-                    returnKeyType="done"
-                    testID={`custom-action-${need}`}
-                    style={styles.customActionInput}
-                  />
-                  <AppButton
-                    compact
-                    variant="primary"
-                    label={copy.saveOwnAction}
-                    disabled={!customActionDraft.trim()}
-                    testID={`save-custom-action-${need}`}
-                    onPress={() => addCustomAction(need)}
-                  />
-                </Animated.View>
-              ) : (
-                <Pressable
-                  accessibilityRole="button"
-                  testID={`write-own-action-${need}`}
-                  onPress={() => {
-                    setCustomActionDraft('');
-                    setCustomActionFor(need);
-                  }}
-                  style={({ pressed }) => [
-                    styles.ownActionButton,
-                    pressed && styles.iconButtonPressed,
+        <View style={styles.tomorrowPicker}>
+          {NEEDS.map((need) => {
+            const selected = entry.microActions.some((item) => item.sphere === need);
+            return (
+              <Pressable
+                key={need}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                accessibilityLabel={t[`sphere_${need}`]}
+                testID={`tomorrow-focus-${need}`}
+                onPress={() => (selected ? removeAction(need) : addIdea(need))}
+                style={({ pressed }) => [
+                  styles.tomorrowPill,
+                  {
+                    backgroundColor: selected ? palette.warmSurface : 'transparent',
+                    borderColor: selected ? palette[need] : palette.border,
+                    opacity: pressed ? 0.7 : 1,
+                  },
+                ]}
+              >
+                <Feather
+                  name={selected ? 'check' : 'plus'}
+                  size={16}
+                  color={selected ? palette[need] : palette.mutedForeground}
+                />
+                <Feather name={needIcons[need]} size={16} color={palette[need]} />
+                <Text
+                  style={[
+                    styles.tomorrowPillText,
+                    { color: selected ? palette[need] : palette.mutedForeground },
                   ]}
                 >
-                  <Feather name="edit-3" size={14} color={palette.mutedForeground} />
-                  <Text style={[styles.ownActionText, { color: palette.mutedForeground }]}>
-                    {copy.ownAction}
-                  </Text>
-                </Pressable>
-              )}
-            </Animated.View>
-          );
-        })}
+                  {t[`sphere_${need}`]}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {entry.microActions.length ? (
+          <View style={styles.selectedActions}>
+            {NEEDS.map((need, needIndex) => {
+              const selectedAction = entry.microActions.find((item) => item.sphere === need);
+              if (!selectedAction) return null;
+              return (
+                <Animated.View
+                  key={need}
+                  entering={FadeInDown.duration(220).delay(needIndex * 45)}
+                  style={[
+                    styles.selectedActionCard,
+                    { backgroundColor: palette.warmSurface, borderColor: palette.border },
+                  ]}
+                >
+                  <View style={styles.selectedActionHeader}>
+                    <View style={[styles.selectedActionIcon, { backgroundColor: palette[`${need}Soft`] }]}>
+                      <Feather name={needIcons[need]} size={15} color={palette[need]} />
+                    </View>
+                    <Text style={[styles.selectedActionSphere, { color: palette[need] }]}>
+                      {t[`sphere_${need}`]}
+                    </Text>
+                    <View style={styles.selectedActionControls}>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={copy.otherIdea}
+                        testID={`other-action-idea-${need}`}
+                        onPress={() => replaceWithNextIdea(need)}
+                        style={({ pressed }) => [
+                          styles.actionIconButton,
+                          pressed && styles.iconButtonPressed,
+                        ]}
+                      >
+                        <Feather name="refresh-cw" size={15} color={palette.mutedForeground} />
+                      </Pressable>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={copy.ownAction}
+                        testID={`write-own-action-${need}`}
+                        onPress={() => {
+                          setCustomActionDraft(selectedAction.action);
+                          setCustomActionFor(need);
+                        }}
+                        style={({ pressed }) => [
+                          styles.actionIconButton,
+                          pressed && styles.iconButtonPressed,
+                        ]}
+                      >
+                        <Feather name="edit-3" size={15} color={palette.mutedForeground} />
+                      </Pressable>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={copy.removeAction}
+                        testID={`remove-action-${need}`}
+                        onPress={() => removeAction(need)}
+                        style={({ pressed }) => [
+                          styles.actionIconButton,
+                          pressed && styles.iconButtonPressed,
+                        ]}
+                      >
+                        <Feather name="x" size={16} color={palette.mutedForeground} />
+                      </Pressable>
+                    </View>
+                  </View>
+                  {customActionFor === need ? (
+                    <Animated.View entering={FadeInDown.duration(200)} style={styles.customActionForm}>
+                      <AppInput
+                        value={customActionDraft}
+                        onChangeText={setCustomActionDraft}
+                        placeholder={copy.ownActionPlaceholder}
+                        returnKeyType="done"
+                        testID={`custom-action-${need}`}
+                        style={styles.customActionInput}
+                      />
+                      <AppButton
+                        compact
+                        variant="primary"
+                        label={copy.saveOwnAction}
+                        disabled={!customActionDraft.trim()}
+                        testID={`save-custom-action-${need}`}
+                        onPress={() => addCustomAction(need)}
+                      />
+                    </Animated.View>
+                  ) : (
+                    <Animated.Text
+                      key={selectedAction.action}
+                      entering={FadeInDown.duration(180)}
+                      style={[styles.selectedActionText, { color: palette.foreground }]}
+                    >
+                      {selectedAction.action}
+                    </Animated.Text>
+                  )}
+                </Animated.View>
+              );
+            })}
+          </View>
+        ) : null}
       </Card>
 
       <View style={styles.saveBlock}>
@@ -562,19 +604,29 @@ const styles = StyleSheet.create({
   },
   noteTagText: { fontFamily: 'DMSans_600SemiBold', fontSize: 12 },
   wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  ideaBlock: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 20, padding: 14, gap: 10 },
-  ideaHeading: { flexDirection: 'row', alignItems: 'center', gap: 9 },
-  ideaIcon: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  ideaSphere: { fontFamily: 'DMSans_600SemiBold', fontSize: 13, letterSpacing: 0.25 },
-  ideaText: { fontFamily: 'Lora_400Regular', fontSize: 15, lineHeight: 22 },
-  rotateIdea: { marginLeft: 'auto', width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
-  selectedAction: { flexDirection: 'row', alignItems: 'flex-start', gap: 9 },
-  selectedActionText: { flex: 1, fontFamily: 'Lora_400Regular', fontSize: 15, lineHeight: 22 },
-  removeActionButton: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
-  ownActionButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 7 },
-  ownActionText: { fontFamily: 'DMSans_500Medium', fontSize: 12 },
+  tomorrowPicker: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, paddingTop: 3 },
+  tomorrowPill: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderRadius: 24,
+  },
+  tomorrowPillText: { fontFamily: 'DMSans_600SemiBold', fontSize: 13 },
+  selectedActions: { gap: 10, paddingTop: 3 },
+  selectedActionCard: { borderWidth: 1, borderRadius: 18, padding: 13, gap: 10 },
+  selectedActionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  selectedActionIcon: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  selectedActionSphere: { fontFamily: 'DMSans_600SemiBold', fontSize: 12, flex: 1 },
+  selectedActionControls: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  actionIconButton: { width: 34, height: 36, alignItems: 'center', justifyContent: 'center' },
+  selectedActionText: { fontFamily: 'Lora_400Regular', fontSize: 15, lineHeight: 22 },
   customActionForm: { gap: 9 },
   customActionInput: { minHeight: 48 },
-  saveBlock: { gap: 9, paddingBottom: 8 },
+  saveBlock: { gap: 9, paddingTop: 42, paddingBottom: 8 },
   autosave: { textAlign: 'center', fontSize: 12 },
 });
