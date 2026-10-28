@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { NEEDS, NeedId } from '@/constants/needs';
 import {
   DailyEntry,
@@ -67,6 +68,8 @@ export default function CheckinScreen() {
   };
   const [savedLabel, setSavedLabel] = useState(false);
   const [scoreTrackWidth, setScoreTrackWidth] = useState(1);
+  const [customActionFor, setCustomActionFor] = useState<NeedId | null>(null);
+  const [customActionDraft, setCustomActionDraft] = useState('');
 
   const copy = useMemo(
     () =>
@@ -82,6 +85,9 @@ export default function CheckinScreen() {
             actions: 'Что я могу изменить завтра?',
             addAction: 'Добавить идею',
             removeAction: 'Убрать',
+            ownAction: 'Своё действие',
+            ownActionPlaceholder: 'Напишите небольшой шаг на завтра...',
+            saveOwnAction: 'Добавить действие',
             saved: 'Запись сохранена на этом устройстве',
             saving: 'Ответы сохраняются локально при вводе',
           }
@@ -96,6 +102,9 @@ export default function CheckinScreen() {
             actions: 'What can I change tomorrow?',
             addAction: 'Add this idea',
             removeAction: 'Remove',
+            ownAction: 'Write your own',
+            ownActionPlaceholder: 'Write one small step for tomorrow...',
+            saveOwnAction: 'Add action',
             saved: 'Entry saved on this device',
             saving: 'Answers save locally as you type',
           },
@@ -145,6 +154,21 @@ export default function CheckinScreen() {
     );
   };
 
+  const addCustomAction = (need: NeedId) => {
+    const action = customActionDraft.trim();
+    if (!action) return;
+    update((current) => ({
+      ...current,
+      microActions: [
+        ...current.microActions.filter((item) => item.sphere !== need),
+        { sphere: need, action },
+      ],
+    }));
+    setCustomActionDraft('');
+    setCustomActionFor(null);
+    notifySuccess();
+  };
+
   const addIdea = (need: NeedId) => {
     const ideas = INSPIRATION_IDEAS_I18N[language][need];
     const nextIndex = data.settings.ideaIndexes[need] % ideas.length;
@@ -175,7 +199,7 @@ export default function CheckinScreen() {
     >
       <StorageBanner message={saveError ? (language === 'ru' ? 'Не удалось сохранить изменения на устройстве. Проверьте свободное место и повторите.' : 'Could not save changes on this device. Check storage space and try again.') : null} />
 
-      {NEEDS.map((need) => {
+      {NEEDS.map((need, needIndex) => {
         const tint = palette[need];
         const questions = SOCRATIC_POOL_I18N[language][need];
         const currentIndex = data.settings.questionIndexes[need] % questions.length;
@@ -188,10 +212,11 @@ export default function CheckinScreen() {
         );
         const action = entry.microActions.find((item) => item.sphere === need);
         return (
-          <Card
+          <Animated.View
             key={need}
-            style={[styles.needCard, { borderLeftColor: tint }]}
+            entering={FadeInDown.duration(280).delay(needIndex * 60)}
           >
+            <Card style={[styles.needCard, { borderLeftColor: tint }]}>
             <View style={styles.needHeading}>
               <View style={[styles.needIcon, { backgroundColor: palette[`${need}Soft`] }]}>
                 <Feather name={needIcons[need]} size={18} color={tint} />
@@ -202,17 +227,21 @@ export default function CheckinScreen() {
                 accessibilityLabel={t.checkin_other_question}
                 testID={`other-question-${need}`}
                 onPress={() => rotateQuestion(need)}
-                style={styles.rotateQuestion}
+                style={({ pressed }) => [
+                  styles.rotateQuestion,
+                  pressed && styles.iconButtonPressed,
+                ]}
               >
-                <Feather name="refresh-cw" size={13} color={palette.mutedForeground} />
-                <Text style={[styles.rotateLabel, { color: palette.mutedForeground }]}>
-                  {t.checkin_other_question}
-                </Text>
+                <Feather name="refresh-cw" size={16} color={tint} />
               </Pressable>
             </View>
-            <Text style={[styles.question, { color: palette.foreground }]}>
+            <Animated.Text
+              key={question}
+              entering={FadeInDown.duration(220)}
+              style={[styles.question, { color: palette.foreground }]}
+            >
               “{question}”
-            </Text>
+            </Animated.Text>
             <View style={[styles.questionBox, { backgroundColor: palette.warmSurface }]}>
               <Text style={[styles.smallLabel, { color: palette.mutedForeground }]}>
                 {copy.yourAnswer}
@@ -302,7 +331,8 @@ export default function CheckinScreen() {
                 </View>
               </View>
             </View>
-          </Card>
+            </Card>
+          </Animated.View>
         );
       })}
 
@@ -363,56 +393,125 @@ export default function CheckinScreen() {
       <Card>
         <SectionTitle>{t.checkin_micro_title}</SectionTitle>
         <BodyText muted>{t.checkin_micro_subtitle}</BodyText>
-        {NEEDS.map((need) => {
+        {NEEDS.map((need, needIndex) => {
           const ideas = INSPIRATION_IDEAS_I18N[language][need];
           const index = data.settings.ideaIndexes[need] % ideas.length;
           const selected = entry.microActions.find((item) => item.sphere === need);
           return (
-            <View key={need} style={[styles.ideaBlock, { borderColor: palette.border }]}>
-              <Text style={[styles.smallLabel, { color: palette[need] }]}>
-                {t[`sphere_${need}`]}
-              </Text>
+            <Animated.View
+              key={need}
+              entering={FadeInDown.duration(240).delay(needIndex * 55)}
+              style={[
+                styles.ideaBlock,
+                {
+                  backgroundColor: palette[`${need}Soft`],
+                  borderColor: palette.border,
+                },
+              ]}
+            >
+              <View style={styles.ideaHeading}>
+                <View style={[styles.ideaIcon, { backgroundColor: palette.card }]}>
+                  <Feather name={needIcons[need]} size={15} color={palette[need]} />
+                </View>
+                <Text style={[styles.ideaSphere, { color: palette[need] }]}>
+                  {t[`sphere_${need}`]}
+                </Text>
+              </View>
               {selected ? (
-                <>
-                  <BodyText>{selected.action}</BodyText>
-                  <AppButton
-                    compact
-                    label={copy.removeAction}
+                <View style={styles.selectedAction}>
+                  <Feather name="check-circle" size={17} color={palette[need]} />
+                  <BodyText style={styles.selectedActionText}>{selected.action}</BodyText>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={copy.removeAction}
+                    testID={`remove-action-${need}`}
                     onPress={() =>
                       update((current) => ({
                         ...current,
                         microActions: current.microActions.filter((item) => item.sphere !== need),
                       }))
                     }
-                  />
-                </>
+                    style={({ pressed }) => [
+                      styles.removeActionButton,
+                      pressed && styles.iconButtonPressed,
+                    ]}
+                  >
+                    <Feather name="x" size={16} color={palette.mutedForeground} />
+                  </Pressable>
+                </View>
               ) : (
                 <>
-                  <BodyText>{ideas[index]}</BodyText>
+                  <BodyText style={styles.ideaText}>{ideas[index]}</BodyText>
                   <AppButton
                     compact
                     label={copy.addAction}
+                    testID={`add-suggested-action-${need}`}
                     onPress={() => addIdea(need)}
                   />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t.checkin_ideas_other}
+                    testID={`other-action-idea-${need}`}
+                    onPress={() =>
+                      updateSettings((settings) => ({
+                        ...settings,
+                        ideaIndexes: {
+                          ...settings.ideaIndexes,
+                          [need]: (settings.ideaIndexes[need] + 1) % ideas.length,
+                        },
+                      }))
+                    }
+                    style={({ pressed }) => [
+                      styles.otherIdeaButton,
+                      pressed && styles.iconButtonPressed,
+                    ]}
+                  >
+                    <Feather name="refresh-cw" size={13} color={palette.primary} />
+                    <Text style={[styles.linkText, { color: palette.primary }]}>
+                      {t.checkin_ideas_other}
+                    </Text>
+                  </Pressable>
                 </>
               )}
-              <Pressable
-                accessibilityRole="button"
-                onPress={() =>
-                  updateSettings((settings) => ({
-                    ...settings,
-                    ideaIndexes: {
-                      ...settings.ideaIndexes,
-                      [need]: (settings.ideaIndexes[need] + 1) % ideas.length,
-                    },
-                  }))
-                }
-              >
-                <Text style={[styles.linkText, { color: palette.primary }]}>
-                  {t.checkin_ideas_other}
-                </Text>
-              </Pressable>
-            </View>
+              {customActionFor === need ? (
+                <Animated.View entering={FadeInDown.duration(220)} style={styles.customActionForm}>
+                  <AppInput
+                    value={customActionDraft}
+                    onChangeText={setCustomActionDraft}
+                    placeholder={copy.ownActionPlaceholder}
+                    returnKeyType="done"
+                    testID={`custom-action-${need}`}
+                    style={styles.customActionInput}
+                  />
+                  <AppButton
+                    compact
+                    variant="primary"
+                    label={copy.saveOwnAction}
+                    disabled={!customActionDraft.trim()}
+                    testID={`save-custom-action-${need}`}
+                    onPress={() => addCustomAction(need)}
+                  />
+                </Animated.View>
+              ) : (
+                <Pressable
+                  accessibilityRole="button"
+                  testID={`write-own-action-${need}`}
+                  onPress={() => {
+                    setCustomActionDraft('');
+                    setCustomActionFor(need);
+                  }}
+                  style={({ pressed }) => [
+                    styles.ownActionButton,
+                    pressed && styles.iconButtonPressed,
+                  ]}
+                >
+                  <Feather name="edit-3" size={14} color={palette.mutedForeground} />
+                  <Text style={[styles.ownActionText, { color: palette.mutedForeground }]}>
+                    {copy.ownAction}
+                  </Text>
+                </Pressable>
+              )}
+            </Animated.View>
           );
         })}
       </Card>
@@ -441,8 +540,8 @@ const styles = StyleSheet.create({
   needCard: { borderLeftWidth: 3, paddingLeft: 15, gap: 17 },
   needHeading: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   needIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  rotateQuestion: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 6 },
-  rotateLabel: { fontFamily: 'DMSans_500Medium', fontSize: 11 },
+  rotateQuestion: { marginLeft: 'auto', width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
+  iconButtonPressed: { opacity: 0.55, transform: [{ scale: 0.94 }] },
   scoreValue: { fontFamily: 'Lora_600SemiBold', fontSize: 17, minWidth: 20, textAlign: 'center' },
   scoreBlock: { gap: 12, paddingTop: 1 },
   scoreLabels: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -473,7 +572,19 @@ const styles = StyleSheet.create({
   noteInput: { minHeight: 110 },
   tagBlock: { gap: 9 },
   wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  ideaBlock: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 12, gap: 9 },
+  ideaBlock: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 20, padding: 14, gap: 10 },
+  ideaHeading: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  ideaIcon: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  ideaSphere: { fontFamily: 'DMSans_600SemiBold', fontSize: 13, letterSpacing: 0.25 },
+  ideaText: { fontFamily: 'Lora_400Regular', fontSize: 15, lineHeight: 22 },
+  selectedAction: { flexDirection: 'row', alignItems: 'flex-start', gap: 9 },
+  selectedActionText: { flex: 1, fontFamily: 'Lora_400Regular', fontSize: 15, lineHeight: 22 },
+  removeActionButton: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
+  otherIdeaButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 },
+  ownActionButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 7 },
+  ownActionText: { fontFamily: 'DMSans_500Medium', fontSize: 12 },
+  customActionForm: { gap: 9 },
+  customActionInput: { minHeight: 48 },
   linkText: { fontSize: 13, fontWeight: '600' },
   saveBlock: { gap: 9, paddingBottom: 8 },
   autosave: { textAlign: 'center', fontSize: 12 },

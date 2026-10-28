@@ -1,11 +1,18 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { NEEDS, NeedId } from '@/constants/needs';
 import { createDailyEntry, localDateKey, useOfflineStore } from '@/context/offline-store';
 import { UI } from '@/data/translations';
 import { BodyText, Card, Screen, SectionTitle } from '@/components/primitives';
 import { useAppColors } from '@/hooks/useAppColors';
 import { Feather } from '@expo/vector-icons';
+
+const needIcons = {
+  autonomy: 'wind',
+  competence: 'anchor',
+  relatedness: 'users',
+} as const;
 
 function monthLabel(date: Date, lang: 'ru' | 'en') {
   return date.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US', {
@@ -31,7 +38,6 @@ export default function JournalScreen() {
           none: 'В этот день пока нет записи.',
           actions: 'Микро-действия на завтра',
           monthRecords: 'Записей за месяц',
-          answers: 'Сократовские ответы',
           selected: 'Выбранный день',
         }
       : {
@@ -39,7 +45,6 @@ export default function JournalScreen() {
           none: 'There is no entry for this day yet.',
           actions: 'Micro-actions for tomorrow',
           monthRecords: 'Entries this month',
-          answers: 'Socratic answers',
           selected: 'Selected day',
         };
   const firstWeekday = (month.getDay() + 6) % 7;
@@ -110,23 +115,30 @@ export default function JournalScreen() {
                 accessibilityLabel={key}
                 testID={`journal-day-${day}`}
                 onPress={() => setSelectedDate(key)}
-                style={[
-                  styles.dayCell,
-                  selected && { backgroundColor: palette.primary },
-                  isToday && !selected && { borderWidth: 1, borderColor: palette.primary },
-                ]}
+                style={styles.dayCell}
               >
-                <Text style={{ color: selected ? palette.primaryForeground : palette.foreground, fontSize: 13 }}>
-                  {day}
-                </Text>
-                {marked ? (
-                  <View
+                <View
+                  style={[
+                    styles.daySurface,
+                    selected
+                      ? { backgroundColor: palette.primary }
+                      : isToday
+                        ? { backgroundColor: palette.warmSurface, borderColor: palette.primary, borderWidth: 1.5 }
+                        : null,
+                  ]}
+                >
+                  <Text
                     style={[
-                      styles.dayMark,
-                      { backgroundColor: selected ? palette.primaryForeground : palette.primary },
+                      styles.dayNumber,
+                      { color: selected ? palette.primaryForeground : palette.foreground },
                     ]}
-                  />
-                ) : null}
+                  >
+                    {day}
+                  </Text>
+                  {marked && !selected ? (
+                    <View style={[styles.dayMark, { backgroundColor: palette.primary }]} />
+                  ) : null}
+                </View>
               </Pressable>
             );
           })}
@@ -150,6 +162,7 @@ export default function JournalScreen() {
         </Card>
       ) : null}
 
+      <Animated.View key={selectedDate} entering={FadeInDown.duration(260)}>
       <Card>
         <Text style={[styles.selectedDate, { color: palette.mutedForeground }]}>
           {copy.selected}
@@ -180,23 +193,49 @@ export default function JournalScreen() {
                 </View>
               </View>
             ) : null}
-            {NEEDS.map((need) => {
+            {NEEDS.map((need, needIndex) => {
               const answers = selectedEntry.answers[need] ?? [];
-              if (!answers.some((answer) => answer.answer.trim())) return null;
+              const filledAnswers = answers.filter((answer) => answer.answer.trim());
+              if (!filledAnswers.length) return null;
+              const softColor =
+                need === 'autonomy'
+                  ? palette.autonomySoft
+                  : need === 'competence'
+                    ? palette.competenceSoft
+                    : palette.relatednessSoft;
               return (
-                <View key={need} style={[styles.detailBlock, { borderColor: palette.border }]}>
-                  <Text style={[styles.smallTitle, { color: palette[need] }]}>
-                    {t[`sphere_${need}`]} · {copy.answers}
-                  </Text>
-                  {answers.filter((answer) => answer.answer.trim()).map((answer) => (
-                    <View key={answer.question} style={styles.answerPair}>
-                      <Text style={[styles.answerQuestion, { color: palette.mutedForeground }]}>
-                        {answer.question}
-                      </Text>
-                      <BodyText>{answer.answer}</BodyText>
+                <Animated.View
+                  key={need}
+                  entering={FadeInDown.duration(280).delay(needIndex * 65)}
+                  style={styles.answerGroup}
+                >
+                  <View style={styles.answerHeading}>
+                    <View style={[styles.answerIcon, { backgroundColor: softColor }]}>
+                      <Feather name={needIcons[need]} size={15} color={palette[need]} />
                     </View>
+                    <Text style={[styles.answerHeadingLabel, { color: palette[need] }]}>
+                      {t[`sphere_${need}`]}
+                    </Text>
+                  </View>
+                  {filledAnswers.map((answer, answerIndex) => (
+                    <Animated.View
+                      key={answer.question}
+                      entering={FadeInDown.duration(240).delay(answerIndex * 50)}
+                      style={[
+                        styles.answerCard,
+                        { backgroundColor: softColor, borderColor: palette.border },
+                      ]}
+                    >
+                      <Text style={[styles.answerQuestion, { color: palette.mutedForeground }]}>
+                        “{answer.question}”
+                      </Text>
+                      <View style={[styles.answerDivider, { backgroundColor: palette.border }]} />
+                      <Text style={[styles.answerText, { color: palette.foreground }]}>
+                        {answer.answer.trim()}
+                      </Text>
+                    </Animated.View>
                   ))}
-                </View>
+                </Animated.View>
               );
             })}
             {selectedEntry.microActions.length ? (
@@ -220,6 +259,7 @@ export default function JournalScreen() {
           <BodyText muted>{t.journal_no_data || copy.none}</BodyText>
         )}
       </Card>
+      </Animated.View>
     </Screen>
   );
 }
@@ -231,8 +271,10 @@ const styles = StyleSheet.create({
   monthTitle: { fontFamily: 'Lora_500Medium', fontSize: 17, textTransform: 'capitalize' },
   calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
   weekday: { width: '14.2857%', textAlign: 'center', fontSize: 11, paddingVertical: 8 },
-  dayCell: { width: '14.2857%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 14 },
-  dayMark: { width: 4, height: 4, borderRadius: 2, position: 'absolute', bottom: 5 },
+  dayCell: { width: '14.2857%', height: 48, alignItems: 'center', justifyContent: 'center' },
+  daySurface: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 15 },
+  dayNumber: { fontSize: 13, lineHeight: 18, fontFamily: 'DMSans_500Medium' },
+  dayMark: { width: 4, height: 4, borderRadius: 2, marginTop: 2 },
   monthCount: { fontSize: 12, marginTop: -8 },
   monthStat: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 8 },
   selectedDate: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 },
@@ -243,6 +285,12 @@ const styles = StyleSheet.create({
   smallTitle: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.65, fontWeight: '700' },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   tag: { borderRadius: 9, paddingHorizontal: 9, paddingVertical: 5, fontSize: 11, overflow: 'hidden' },
-  answerPair: { gap: 4 },
-  answerQuestion: { fontFamily: 'Lora_400Regular_Italic', fontSize: 13, lineHeight: 20 },
+  answerGroup: { gap: 9 },
+  answerHeading: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  answerIcon: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center', borderRadius: 15 },
+  answerHeadingLabel: { fontFamily: 'DMSans_600SemiBold', fontSize: 13, letterSpacing: 0.3 },
+  answerCard: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 18, padding: 14, gap: 10 },
+  answerQuestion: { fontFamily: 'Lora_400Regular_Italic', fontSize: 14, lineHeight: 22 },
+  answerDivider: { height: StyleSheet.hairlineWidth },
+  answerText: { fontFamily: 'DMSans_400Regular', fontSize: 14, lineHeight: 22 },
 });
