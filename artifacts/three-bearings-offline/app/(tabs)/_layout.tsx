@@ -11,8 +11,8 @@ import { useAppColors } from '@/hooks/useAppColors';
 const tabs = [
   { name: 'index', key: 'nav_today', icon: 'sun' },
   { name: 'library', key: 'nav_library', icon: 'book-open' },
-  { name: 'analytics', key: 'nav_analytics', icon: 'bar-chart-2' },
   { name: 'journal', key: 'nav_journal', icon: 'calendar' },
+  { name: 'analytics', key: 'nav_analytics', icon: 'bar-chart-2' },
   { name: 'settings', key: 'nav_settings', icon: 'sliders' },
 ] as const;
 
@@ -53,7 +53,7 @@ export default function TabLayout() {
               ]}
             />
           ) : null,
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '500', marginBottom: 2 },
+        tabBarLabelStyle: { fontFamily: 'DMSans_500Medium', fontSize: 10, marginBottom: 2 },
       }}
     >
       {tabs.map((tab) => (

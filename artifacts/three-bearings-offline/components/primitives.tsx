@@ -1,6 +1,7 @@
 import React, { ReactNode } from 'react';
 import {
   Pressable,
+  Platform,
   StyleProp,
   StyleSheet,
   Text,
@@ -17,10 +18,12 @@ import { useAppColors } from '@/hooks/useAppColors';
 export function Screen({
   title,
   subtitle,
+  leading,
   children,
 }: {
   title: string;
   subtitle?: string;
+  leading?: ReactNode;
   children: ReactNode;
 }) {
   const palette = useAppColors();
@@ -37,9 +40,7 @@ export function Screen({
       >
         <View style={styles.screenStack}>
           <View style={styles.header}>
-            <Text style={[styles.eyebrow, { color: palette.primary }]}>
-              THREE BEARINGS
-            </Text>
+            {leading}
             <Text style={[styles.title, { color: palette.foreground }]}>
               {title}
             </Text>
@@ -71,6 +72,7 @@ export function Card({
         {
           backgroundColor: palette.card,
           borderColor: palette.border,
+          shadowColor: palette.foreground,
         },
         style,
       ]}
@@ -132,7 +134,7 @@ export function AppInput({
         styles.input,
         {
           color: palette.foreground,
-          backgroundColor: palette.background,
+          backgroundColor: palette.warmSurface,
           borderColor: palette.border,
         },
         style,
@@ -208,35 +210,35 @@ export function StorageBanner({ message }: { message: string | null }) {
 
 const styles = StyleSheet.create({
   screenContent: {
-    paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 112,
+    paddingHorizontal: 18,
+    paddingTop: Platform.OS === 'web' ? 67 : 20,
+    paddingBottom: 116,
   },
-  screenStack: { gap: 18 },
-  header: { gap: 6, paddingBottom: 3 },
-  eyebrow: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 2.1,
-  },
+  screenStack: { gap: 20 },
+  header: { gap: 5, paddingBottom: 2 },
   title: {
     fontFamily: 'Lora_500Medium',
-    fontSize: 30,
-    lineHeight: 38,
+    fontSize: 32,
+    lineHeight: 40,
+    letterSpacing: -0.6,
   },
-  subtitle: { fontSize: 14, lineHeight: 21, maxWidth: 360 },
+  subtitle: { fontFamily: 'DMSans_400Regular', fontSize: 14, lineHeight: 21, maxWidth: 360 },
   card: {
     borderRadius: 22,
     borderWidth: StyleSheet.hairlineWidth,
-    padding: 18,
-    gap: 14,
+    padding: 19,
+    gap: 15,
+    shadowOpacity: 0.045,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 1,
   },
-  sectionTitle: { fontSize: 16, fontWeight: '600', lineHeight: 22 },
-  body: { fontSize: 14, lineHeight: 21 },
+  sectionTitle: { fontFamily: 'Lora_500Medium', fontSize: 18, lineHeight: 25 },
+  body: { fontFamily: 'DMSans_400Regular', fontSize: 14, lineHeight: 22 },
   input: {
     minHeight: 48,
     borderWidth: 1,
-    borderRadius: 14,
+    borderRadius: 17,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,

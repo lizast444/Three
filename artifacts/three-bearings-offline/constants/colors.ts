@@ -21,6 +21,10 @@ const colors = {
     autonomy: '#6b8d68',
     competence: '#6f889b',
     relatedness: '#b47164',
+    autonomySoft: '#eef3ed',
+    competenceSoft: '#edf2f5',
+    relatednessSoft: '#f7eeec',
+    warmSurface: '#f8f6f3',
     radius: 12,
   },
   dark: {
@@ -45,6 +49,10 @@ const colors = {
     autonomy: '#8ca989',
     competence: '#8ca6b9',
     relatedness: '#d08c7e',
+    autonomySoft: '#30372f',
+    competenceSoft: '#2e353a',
+    relatednessSoft: '#3a302f',
+    warmSurface: '#302c28',
     radius: 12,
   },
 };

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { CATEGORIES, CategoryId } from '@/constants/needs';
 import { useOfflineStore } from '@/context/offline-store';
@@ -21,6 +22,12 @@ import { useAppColors } from '@/hooks/useAppColors';
 
 const categoryColorKey = (category: CategoryId) =>
   category === 'universal' ? 'primary' : category;
+const categoryIcons = {
+  autonomy: 'wind',
+  competence: 'anchor',
+  relatedness: 'users',
+  universal: 'globe',
+} as const;
 
 export default function LibraryScreen() {
   const { data, addLibraryNote, deleteLibraryNote, saveError } = useOfflineStore();
@@ -74,23 +81,62 @@ export default function LibraryScreen() {
   };
 
   return (
-    <Screen title={t.library_title} subtitle={t.library_subtitle}>
+    <Screen
+      title={t.library_title}
+      subtitle={t.library_subtitle}
+      leading={
+        <View style={[styles.libraryMark, { backgroundColor: palette.warmSurface }]}>
+          <Feather name="book-open" size={20} color={palette.primary} />
+        </View>
+      }
+    >
       <StorageBanner message={saveError ? (language === 'ru' ? 'Не удалось сохранить заметку. Проверьте свободное место и повторите.' : 'Could not save the note. Check storage space and try again.') : null} />
-      <View style={styles.categoryScroller}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.categoryScroller}
+      >
         {CATEGORIES.map((item) => (
-          <AppButton
+          <Pressable
             key={item}
-            compact
-            selected={category === item}
-            label={item === 'universal' ? t.library_universal : getSphereLabel(item, t)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: category === item }}
+            testID={`library-category-${item}`}
             onPress={() => {
               setCategory(item);
               setSearch('');
               setAnswering(null);
             }}
-          />
+            style={({ pressed }) => [
+              styles.categoryChip,
+              category !== item && {
+                backgroundColor: palette.card,
+                borderColor: palette.border,
+              },
+              category === item && {
+                backgroundColor: palette[categoryColorKey(item)],
+                borderColor: palette[categoryColorKey(item)],
+              },
+              pressed && styles.chipPressed,
+            ]}
+          >
+            <Feather
+              name={categoryIcons[item]}
+              size={15}
+              color={category === item ? palette.primaryForeground : palette.mutedForeground}
+            />
+            <Text
+              numberOfLines={1}
+              style={[
+                styles.categoryLabel,
+                { color: category === item ? palette.primaryForeground : palette.mutedForeground },
+              ]}
+            >
+              {item === 'universal' ? t.library_universal : getSphereLabel(item, t)}
+            </Text>
+          </Pressable>
         ))}
-      </View>
+      </ScrollView>
       <AppInput
         value={search}
         onChangeText={setSearch}
@@ -111,13 +157,32 @@ export default function LibraryScreen() {
             const key = `${category}-${index}`;
             const isExpanded = !!expanded[key];
             return (
-              <View key={key} style={[styles.questionCard, { backgroundColor: palette.muted, borderColor: palette.border }]}>
-                <Text style={[styles.questionNumber, { color: palette[categoryColorKey(category)] }]}>
-                  {String(index + 1).padStart(2, '0')}
-                </Text>
-                <Text style={[styles.questionText, { color: palette.foreground }]}>
-                  {item.question}
-                </Text>
+              <View
+                key={key}
+                style={[
+                  styles.questionCard,
+                  {
+                    backgroundColor: category === 'universal'
+                      ? palette.warmSurface
+                      : palette[
+                          category === 'autonomy'
+                            ? 'autonomySoft'
+                            : category === 'competence'
+                              ? 'competenceSoft'
+                              : 'relatednessSoft'
+                        ],
+                    borderColor: palette.border,
+                  },
+                ]}
+              >
+                <View style={styles.questionLine}>
+                  <Text style={[styles.questionNumber, { color: palette[categoryColorKey(category)] }]}>
+                    {String(index + 1).padStart(2, '0')}.
+                  </Text>
+                  <Text style={[styles.questionText, { color: palette.foreground }]}>
+                    {item.question}
+                  </Text>
+                </View>
                 <View style={styles.questionActions}>
                   <AppButton
                     compact
@@ -211,14 +276,27 @@ export default function LibraryScreen() {
 }
 
 const styles = StyleSheet.create({
-  categoryScroller: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  libraryCard: { padding: 14, gap: 12 },
+  libraryMark: { width: 46, height: 46, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  categoryScroller: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingRight: 8 },
+  categoryChip: {
+    minHeight: 42,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    borderRadius: 22,
+    borderWidth: 1,
+  },
+  categoryLabel: { fontFamily: 'DMSans_500Medium', fontSize: 13 },
+  chipPressed: { opacity: 0.8, transform: [{ scale: 0.98 }] },
+  libraryCard: { padding: 16, gap: 14 },
   libraryHeading: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 3 },
   categoryDot: { width: 9, height: 9, borderRadius: 5 },
   count: { marginLeft: 'auto', fontSize: 13 },
-  questionCard: { borderWidth: 1, borderRadius: 17, padding: 14, gap: 10 },
-  questionNumber: { fontSize: 11, fontWeight: '700', letterSpacing: 1 },
-  questionText: { fontFamily: 'Lora_400Regular', fontSize: 15, lineHeight: 23 },
+  questionCard: { borderWidth: 1, borderRadius: 22, padding: 15, gap: 10 },
+  questionLine: { flexDirection: 'row', alignItems: 'flex-start', gap: 9 },
+  questionNumber: { fontFamily: 'DMSans_600SemiBold', fontSize: 12, paddingTop: 4 },
+  questionText: { flex: 1, fontFamily: 'Lora_400Regular', fontSize: 16, lineHeight: 24 },
   questionActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   hints: { gap: 9, paddingTop: 3 },
   hintRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 9 },

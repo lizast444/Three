@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { NEEDS, NeedId } from '@/constants/needs';
 import {
@@ -24,11 +25,29 @@ import {
 } from '@/components/primitives';
 import { useAppColors } from '@/hooks/useAppColors';
 
-const formatDate = (date: string, language: 'ru' | 'en') =>
-  new Date(`${date}T12:00:00`).toLocaleDateString(
-    language === 'ru' ? 'ru-RU' : 'en-US',
-    { weekday: 'long', day: 'numeric', month: 'long' },
-  );
+const formatDate = (date: string, language: 'ru' | 'en') => {
+  const parsed = new Date(`${date}T12:00:00`);
+  if (language === 'ru') {
+    const day = parsed.toLocaleDateString('ru-RU', { day: 'numeric' });
+    const month = parsed.toLocaleDateString('ru-RU', { month: 'long' });
+    const weekday = parsed.toLocaleDateString('ru-RU', { weekday: 'long' });
+    return `${day} ${month}, ${weekday}`.replace(
+      /(^|\s|,\s)(\p{L})/gu,
+      (_, prefix: string, letter: string) => `${prefix}${letter.toLocaleUpperCase('ru-RU')}`,
+    );
+  }
+  return parsed.toLocaleDateString('en-US', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+};
+
+const needIcons = {
+  autonomy: 'wind',
+  competence: 'anchor',
+  relatedness: 'users',
+} as const;
 
 export default function CheckinScreen() {
   const { data, saveError, updateDay, updateSettings } = useOfflineStore();
@@ -47,6 +66,7 @@ export default function CheckinScreen() {
     yesterdayReview: '',
   };
   const [savedLabel, setSavedLabel] = useState(false);
+  const [scoreTrackWidth, setScoreTrackWidth] = useState(1);
 
   const copy = useMemo(
     () =>
@@ -54,7 +74,6 @@ export default function CheckinScreen() {
         ? {
             today: 'Сегодня',
             scale: 'От совсем не ощущаю до полностью',
-            question: 'Вопрос дня',
             yourAnswer: 'Ваш ответ',
             earlierAnswers: 'Ранее записанные ответы',
             yesterday: 'Что сработало вчера?',
@@ -65,13 +84,10 @@ export default function CheckinScreen() {
             removeAction: 'Убрать',
             saved: 'Запись сохранена на этом устройстве',
             saving: 'Ответы сохраняются локально при вводе',
-            note: 'Заметка дня',
-            scores: 'Три потребности',
           }
         : {
             today: 'Today',
             scale: 'From not at all to fully',
-            question: 'Today’s question',
             yourAnswer: 'Your answer',
             earlierAnswers: 'Earlier answers',
             yesterday: 'What worked yesterday?',
@@ -82,8 +98,6 @@ export default function CheckinScreen() {
             removeAction: 'Remove',
             saved: 'Entry saved on this device',
             saving: 'Answers save locally as you type',
-            note: 'Day note',
-            scores: 'Three needs',
           },
     [language],
   );
@@ -122,6 +136,15 @@ export default function CheckinScreen() {
       };
     });
 
+  const setScoreFromTrack = (need: NeedId, locationX: number) => {
+    const score = Math.max(0, Math.min(10, Math.round((locationX / scoreTrackWidth) * 10)));
+    update((current) =>
+      current.scores[need] === score
+        ? current
+        : { ...current, scores: { ...current.scores, [need]: score } },
+    );
+  };
+
   const addIdea = (need: NeedId) => {
     const ideas = INSPIRATION_IDEAS_I18N[language][need];
     const nextIndex = data.settings.ideaIndexes[need] % ideas.length;
@@ -147,19 +170,10 @@ export default function CheckinScreen() {
 
   return (
     <Screen
-      title={t.nav_today}
-      subtitle={`${dateLabel} · ${t.checkin_subtitle}`}
+      title={dateLabel}
+      subtitle={t.checkin_subtitle}
     >
       <StorageBanner message={saveError ? (language === 'ru' ? 'Не удалось сохранить изменения на устройстве. Проверьте свободное место и повторите.' : 'Could not save changes on this device. Check storage space and try again.') : null} />
-
-      <Card style={styles.introCard}>
-        <Text style={[styles.introTitle, { color: palette.foreground }]}>
-          {copy.scores}
-        </Text>
-        <Text style={[styles.introText, { color: palette.mutedForeground }]}>
-          {copy.scale}
-        </Text>
-      </Card>
 
       {NEEDS.map((need) => {
         const tint = palette[need];
@@ -179,66 +193,27 @@ export default function CheckinScreen() {
             style={[styles.needCard, { borderLeftColor: tint }]}
           >
             <View style={styles.needHeading}>
-              <View style={[styles.needDot, { backgroundColor: tint }]} />
-              <SectionTitle>{t[`sphere_${need}`]}</SectionTitle>
-              <Text style={[styles.scoreValue, { color: tint }]}>
-                {entry.scores[need]}/10
-              </Text>
-            </View>
-            <View style={styles.scoreControl}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={language === 'ru' ? 'Уменьшить оценку' : 'Lower score'}
-                testID={`score-minus-${need}`}
-                onPress={() =>
-                  update((current) => ({
-                    ...current,
-                    scores: {
-                      ...current.scores,
-                      [need]: Math.max(0, current.scores[need] - 1),
-                    },
-                  }))
-                }
-                style={[styles.stepper, { backgroundColor: palette.secondary }]}
-              >
-                <Text style={[styles.stepperLabel, { color: palette.foreground }]}>−</Text>
-              </Pressable>
-              <View style={[styles.scoreTrack, { backgroundColor: palette.secondary }]}>
-                <View
-                  style={[
-                    styles.scoreFill,
-                    { width: `${entry.scores[need] * 10}%`, backgroundColor: tint },
-                  ]}
-                />
+              <View style={[styles.needIcon, { backgroundColor: palette[`${need}Soft`] }]}>
+                <Feather name={needIcons[need]} size={18} color={tint} />
               </View>
+              <SectionTitle>{t[`sphere_${need}`]}</SectionTitle>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={language === 'ru' ? 'Увеличить оценку' : 'Raise score'}
-                testID={`score-plus-${need}`}
-                onPress={() =>
-                  update((current) => ({
-                    ...current,
-                    scores: {
-                      ...current.scores,
-                      [need]: Math.min(10, current.scores[need] + 1),
-                    },
-                  }))
-                }
-                style={[styles.stepper, { backgroundColor: palette.secondary }]}
+                accessibilityLabel={t.checkin_other_question}
+                testID={`other-question-${need}`}
+                onPress={() => rotateQuestion(need)}
+                style={styles.rotateQuestion}
               >
-                <Text style={[styles.stepperLabel, { color: palette.foreground }]}>+</Text>
+                <Feather name="refresh-cw" size={13} color={palette.mutedForeground} />
+                <Text style={[styles.rotateLabel, { color: palette.mutedForeground }]}>
+                  {t.checkin_other_question}
+                </Text>
               </Pressable>
             </View>
-            <View style={[styles.questionBox, { backgroundColor: palette.muted }]}>
-              <Text style={[styles.smallLabel, { color: tint }]}>{copy.question}</Text>
-              <Text style={[styles.question, { color: palette.foreground }]}>
-                {question}
-              </Text>
-              <AppButton
-                compact
-                label={t.checkin_other_question}
-                onPress={() => rotateQuestion(need)}
-              />
+            <Text style={[styles.question, { color: palette.foreground }]}>
+              “{question}”
+            </Text>
+            <View style={[styles.questionBox, { backgroundColor: palette.warmSurface }]}>
               <Text style={[styles.smallLabel, { color: palette.mutedForeground }]}>
                 {copy.yourAnswer}
               </Text>
@@ -265,6 +240,67 @@ export default function CheckinScreen() {
                   ))}
                 </View>
               ) : null}
+            </View>
+            <View style={styles.scoreBlock}>
+              <View style={styles.scoreLabels}>
+                <Text style={[styles.scoreEndLabel, { color: palette.mutedForeground }]}>
+                  {language === 'ru' ? 'СОВСЕМ НЕТ' : 'NOT AT ALL'}
+                </Text>
+                <Text style={[styles.scoreValue, { color: tint }]}>
+                  {entry.scores[need]}
+                </Text>
+                <Text style={[styles.scoreEndLabel, { color: palette.mutedForeground }]}>
+                  {language === 'ru' ? 'ПОЛНОСТЬЮ' : 'FULLY'}
+                </Text>
+              </View>
+              <View
+                accessibilityRole="adjustable"
+                accessibilityLabel={t[`sphere_${need}`]}
+                accessibilityValue={{ min: 0, max: 10, now: entry.scores[need] }}
+                accessibilityActions={[
+                  { name: 'increment', label: language === 'ru' ? 'Увеличить' : 'Increase' },
+                  { name: 'decrement', label: language === 'ru' ? 'Уменьшить' : 'Decrease' },
+                ]}
+                onAccessibilityAction={(event) => {
+                  const delta = event.nativeEvent.actionName === 'increment' ? 1 : -1;
+                  update((current) => ({
+                    ...current,
+                    scores: {
+                      ...current.scores,
+                      [need]: Math.max(0, Math.min(10, current.scores[need] + delta)),
+                    },
+                  }));
+                }}
+                onLayout={(event) => setScoreTrackWidth(Math.max(1, event.nativeEvent.layout.width))}
+                onStartShouldSetResponder={() => true}
+                onMoveShouldSetResponder={() => true}
+                onResponderGrant={(event) => setScoreFromTrack(need, event.nativeEvent.locationX)}
+                onResponderMove={(event) => setScoreFromTrack(need, event.nativeEvent.locationX)}
+                style={styles.scoreTouchTarget}
+              >
+                <View
+                  pointerEvents="none"
+                  style={[styles.scoreTrack, { backgroundColor: palette.secondary }]}
+                >
+                  <View
+                    style={[
+                      styles.scoreFill,
+                      { width: `${entry.scores[need] * 10}%`, backgroundColor: tint },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.scoreThumb,
+                      {
+                        left: `${entry.scores[need] * 10}%`,
+                        borderColor: tint,
+                        backgroundColor: palette.card,
+                        shadowColor: palette.foreground,
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
             </View>
           </Card>
         );
@@ -402,21 +438,33 @@ export default function CheckinScreen() {
 }
 
 const styles = StyleSheet.create({
-  introCard: { gap: 5, paddingVertical: 15 },
-  introTitle: { fontSize: 15, fontWeight: '600' },
-  introText: { fontSize: 13 },
-  needCard: { borderLeftWidth: 3, paddingLeft: 15 },
-  needHeading: { flexDirection: 'row', alignItems: 'center', gap: 9 },
-  needDot: { width: 9, height: 9, borderRadius: 5 },
-  scoreValue: { marginLeft: 'auto', fontSize: 18, fontWeight: '700' },
-  scoreControl: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  stepper: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  stepperLabel: { fontSize: 21, lineHeight: 24, fontWeight: '500' },
-  scoreTrack: { height: 7, borderRadius: 6, flex: 1, overflow: 'hidden' },
-  scoreFill: { height: '100%', borderRadius: 6 },
-  questionBox: { gap: 10, padding: 14, borderRadius: 16 },
+  needCard: { borderLeftWidth: 3, paddingLeft: 15, gap: 17 },
+  needHeading: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  needIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  rotateQuestion: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 6 },
+  rotateLabel: { fontFamily: 'DMSans_500Medium', fontSize: 11 },
+  scoreValue: { fontFamily: 'Lora_600SemiBold', fontSize: 17, minWidth: 20, textAlign: 'center' },
+  scoreBlock: { gap: 12, paddingTop: 1 },
+  scoreLabels: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  scoreEndLabel: { fontSize: 10, fontWeight: '600', letterSpacing: 0.65 },
+  scoreTouchTarget: { height: 34, justifyContent: 'center', position: 'relative' },
+  scoreTrack: { height: 5, borderRadius: 6, position: 'absolute', left: 0, right: 0, overflow: 'visible' as const },
+  scoreFill: { height: '100%', borderRadius: 6, position: 'absolute', top: 0 },
+  scoreThumb: {
+    position: 'absolute',
+    top: -6,
+    marginLeft: -9,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  questionBox: { gap: 9, padding: 14, borderRadius: 16 },
   smallLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.7, textTransform: 'uppercase' },
-  question: { fontFamily: 'Lora_400Regular', fontSize: 16, lineHeight: 24 },
+  question: { fontFamily: 'Lora_400Regular_Italic', fontSize: 17, lineHeight: 26 },
   answerInput: { minHeight: 96 },
   previousAnswers: { gap: 8, paddingTop: 4 },
   previousAnswerText: { fontSize: 12, lineHeight: 18 },
