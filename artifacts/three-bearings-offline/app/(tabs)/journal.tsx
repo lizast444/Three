@@ -186,9 +186,12 @@ export default function JournalScreen() {
                 <BodyText>{selectedEntry.note}</BodyText>
                 <View style={styles.tagRow}>
                   {selectedEntry.noteTags.map((tag) => (
-                    <Text key={tag} style={[styles.tag, { backgroundColor: palette[tag] + '22', color: palette[tag] }]}>
-                      {t[`sphere_${tag}`]}
-                    </Text>
+                    <View key={tag} style={[styles.journalTag, { backgroundColor: palette.secondary }]}>
+                      <Feather name={needIcons[tag]} size={12} color={palette[tag]} />
+                      <Text style={[styles.journalTagText, { color: palette.foreground }]}>
+                        {t[`sphere_${tag}`]}
+                      </Text>
+                    </View>
                   ))}
                 </View>
               </View>
@@ -197,12 +200,6 @@ export default function JournalScreen() {
               const answers = selectedEntry.answers[need] ?? [];
               const filledAnswers = answers.filter((answer) => answer.answer.trim());
               if (!filledAnswers.length) return null;
-              const softColor =
-                need === 'autonomy'
-                  ? palette.autonomySoft
-                  : need === 'competence'
-                    ? palette.competenceSoft
-                    : palette.relatednessSoft;
               return (
                 <Animated.View
                   key={need}
@@ -210,7 +207,7 @@ export default function JournalScreen() {
                   style={styles.answerGroup}
                 >
                   <View style={styles.answerHeading}>
-                    <View style={[styles.answerIcon, { backgroundColor: softColor }]}>
+                    <View style={[styles.answerIcon, { backgroundColor: palette.secondary }]}>
                       <Feather name={needIcons[need]} size={15} color={palette[need]} />
                     </View>
                     <Text style={[styles.answerHeadingLabel, { color: palette[need] }]}>
@@ -223,7 +220,7 @@ export default function JournalScreen() {
                       entering={FadeInDown.duration(240).delay(answerIndex * 50)}
                       style={[
                         styles.answerCard,
-                        { backgroundColor: softColor, borderColor: palette.border },
+                        { backgroundColor: palette.card, borderColor: palette.border },
                       ]}
                     >
                       <Text style={[styles.answerQuestion, { color: palette.mutedForeground }]}>
@@ -284,7 +281,8 @@ const styles = StyleSheet.create({
   detailBlock: { gap: 7, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 12 },
   smallTitle: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.65, fontWeight: '700' },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  tag: { borderRadius: 9, paddingHorizontal: 9, paddingVertical: 5, fontSize: 11, overflow: 'hidden' },
+  journalTag: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 9, paddingHorizontal: 9, paddingVertical: 5 },
+  journalTagText: { fontSize: 11 },
   answerGroup: { gap: 9 },
   answerHeading: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   answerIcon: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center', borderRadius: 15 },

@@ -2,6 +2,7 @@ import React from 'react';
 import { Platform, View, StyleSheet, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { UI } from '@/data/translations';
@@ -50,32 +51,38 @@ export default function TabLayout() {
           shadowOpacity: 0.12,
           shadowRadius: 18,
         },
-        tabBarBackground: () =>
-          isIOS ? (
-            <BlurView
-              intensity={60}
-              tint={isDark ? 'dark' : 'light'}
-              style={[
-                StyleSheet.absoluteFill,
-                styles.glassSurface,
-                {
-                  backgroundColor: `${palette.card}70`,
-                  borderColor: palette.border,
-                },
+        tabBarBackground: () => (
+          <View
+            pointerEvents="none"
+            style={[
+              StyleSheet.absoluteFill,
+              styles.glassSurface,
+              {
+                backgroundColor: `${palette.card}F4`,
+                borderColor: palette.border,
+              },
+            ]}
+          >
+            {isIOS ? (
+              <BlurView
+                intensity={42}
+                tint={isDark ? 'dark' : 'light'}
+                style={StyleSheet.absoluteFill}
+              />
+            ) : null}
+            <LinearGradient
+              colors={[
+                `${palette.card}FC`,
+                `${palette.card}EC`,
+                `${palette.card}F9`,
               ]}
+              locations={[0, 0.52, 1]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
             />
-          ) : (
-            <View
-              style={[
-                StyleSheet.absoluteFill,
-                styles.glassSurface,
-                {
-                  backgroundColor: `${palette.card}E8`,
-                  borderColor: palette.border,
-                },
-              ]}
-            />
-          ),
+          </View>
+        ),
         tabBarItemStyle: styles.tabItem,
         tabBarLabelStyle: styles.tabLabel,
       }}

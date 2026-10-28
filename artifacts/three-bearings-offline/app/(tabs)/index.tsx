@@ -88,6 +88,7 @@ export default function CheckinScreen() {
             ownAction: 'Своё действие',
             ownActionPlaceholder: 'Напишите небольшой шаг на завтра...',
             saveOwnAction: 'Добавить действие',
+            otherIdea: 'Другая идея',
             saved: 'Запись сохранена на этом устройстве',
             saving: 'Ответы сохраняются локально при вводе',
           }
@@ -105,6 +106,7 @@ export default function CheckinScreen() {
             ownAction: 'Write your own',
             ownActionPlaceholder: 'Write one small step for tomorrow...',
             saveOwnAction: 'Add action',
+            otherIdea: 'Another idea',
             saved: 'Entry saved on this device',
             saving: 'Answers save locally as you type',
           },
@@ -430,7 +432,7 @@ export default function CheckinScreen() {
               style={[
                 styles.ideaBlock,
                 {
-                  backgroundColor: palette[`${need}Soft`],
+                    backgroundColor: palette.card,
                   borderColor: palette.border,
                 },
               ]}
@@ -442,6 +444,28 @@ export default function CheckinScreen() {
                 <Text style={[styles.ideaSphere, { color: palette[need] }]}>
                   {t[`sphere_${need}`]}
                 </Text>
+                {!selected ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={copy.otherIdea}
+                    testID={`other-action-idea-${need}`}
+                    onPress={() =>
+                      updateSettings((settings) => ({
+                        ...settings,
+                        ideaIndexes: {
+                          ...settings.ideaIndexes,
+                          [need]: (settings.ideaIndexes[need] + 1) % ideas.length,
+                        },
+                      }))
+                    }
+                    style={({ pressed }) => [
+                      styles.rotateIdea,
+                      pressed && styles.iconButtonPressed,
+                    ]}
+                  >
+                    <Feather name="refresh-cw" size={16} color={palette[need]} />
+                  </Pressable>
+                ) : null}
               </View>
               {selected ? (
                 <View style={styles.selectedAction}>
@@ -467,36 +491,19 @@ export default function CheckinScreen() {
                 </View>
               ) : (
                 <>
-                  <BodyText style={styles.ideaText}>{ideas[index]}</BodyText>
+                  <Animated.Text
+                    key={`${need}-${index}`}
+                    entering={FadeInDown.duration(220)}
+                    style={[styles.ideaText, { color: palette.foreground }]}
+                  >
+                    {ideas[index]}
+                  </Animated.Text>
                   <AppButton
                     compact
                     label={copy.addAction}
                     testID={`add-suggested-action-${need}`}
                     onPress={() => addIdea(need)}
                   />
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={t.checkin_ideas_other}
-                    testID={`other-action-idea-${need}`}
-                    onPress={() =>
-                      updateSettings((settings) => ({
-                        ...settings,
-                        ideaIndexes: {
-                          ...settings.ideaIndexes,
-                          [need]: (settings.ideaIndexes[need] + 1) % ideas.length,
-                        },
-                      }))
-                    }
-                    style={({ pressed }) => [
-                      styles.otherIdeaButton,
-                      pressed && styles.iconButtonPressed,
-                    ]}
-                  >
-                    <Feather name="refresh-cw" size={13} color={palette.primary} />
-                    <Text style={[styles.linkText, { color: palette.primary }]}>
-                      {t.checkin_ideas_other}
-                    </Text>
-                  </Pressable>
                 </>
               )}
               {customActionFor === need ? (
@@ -614,15 +621,14 @@ const styles = StyleSheet.create({
   ideaIcon: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   ideaSphere: { fontFamily: 'DMSans_600SemiBold', fontSize: 13, letterSpacing: 0.25 },
   ideaText: { fontFamily: 'Lora_400Regular', fontSize: 15, lineHeight: 22 },
+  rotateIdea: { marginLeft: 'auto', width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
   selectedAction: { flexDirection: 'row', alignItems: 'flex-start', gap: 9 },
   selectedActionText: { flex: 1, fontFamily: 'Lora_400Regular', fontSize: 15, lineHeight: 22 },
   removeActionButton: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
-  otherIdeaButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 },
   ownActionButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 7 },
   ownActionText: { fontFamily: 'DMSans_500Medium', fontSize: 12 },
   customActionForm: { gap: 9 },
   customActionInput: { minHeight: 48 },
-  linkText: { fontSize: 13, fontWeight: '600' },
   saveBlock: { gap: 9, paddingBottom: 8 },
   autosave: { textAlign: 'center', fontSize: 12 },
 });
