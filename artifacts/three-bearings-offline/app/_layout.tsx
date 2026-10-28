@@ -12,6 +12,7 @@ import {
 } from '@expo-google-fonts/dm-sans';
 import {
   Lora_400Regular,
+  Lora_400Regular_Italic,
   Lora_500Medium,
   Lora_600SemiBold,
 } from '@expo-google-fonts/lora';
@@ -70,6 +71,7 @@ export default function RootLayout() {
     DMSans_500Medium,
     DMSans_600SemiBold,
     Lora_400Regular,
+    Lora_400Regular_Italic,
     Lora_500Medium,
     Lora_600SemiBold,
   });

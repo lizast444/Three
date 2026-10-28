@@ -584,7 +584,12 @@ const styles = StyleSheet.create({
   scoreEndLabel: { fontSize: 10, fontWeight: '600', letterSpacing: 0.65 },
   questionBox: { gap: 9 },
   smallLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.7, textTransform: 'uppercase' },
-  question: { fontFamily: 'Lora_400Regular_Italic', fontSize: 17, lineHeight: 26 },
+  question: {
+    fontFamily: 'Lora_400Regular_Italic',
+    fontSize: 18,
+    lineHeight: 28,
+    letterSpacing: 0.05,
+  },
   answerInput: { minHeight: 96 },
   previousAnswers: { gap: 8, paddingTop: 4 },
   previousAnswerText: { fontSize: 12, lineHeight: 18 },
