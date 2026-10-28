@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
   PanResponder,
   StyleSheet,
@@ -6,6 +6,11 @@ import {
   type NativeSyntheticEvent,
   type NativeTouchEvent,
 } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 
 type ScoreSliderProps = {
   value: number;
@@ -37,11 +42,29 @@ export function ScoreSlider({
   const touchStart = useRef({ x: 0, y: 0 });
   const didDrag = useRef(false);
   const onValueChangeRef = useRef(onValueChange);
+  const progress = useSharedValue(value);
+  const trackWidth = useSharedValue(1);
   onValueChangeRef.current = onValueChange;
+
+  useEffect(() => {
+    progress.value = withSpring(value, {
+      damping: 22,
+      stiffness: 320,
+      mass: 0.45,
+    });
+  }, [progress, value]);
+
+  const fillStyle = useAnimatedStyle(() => ({
+    width: (progress.value / 10) * trackWidth.value,
+  }));
+  const thumbStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: (progress.value / 10) * trackWidth.value }],
+  }));
 
   const measureSlider = () => {
     sliderRef.current?.measureInWindow((x, _y, width) => {
       bounds.current = { left: x + 10, width: Math.max(width - 20, 1) };
+      trackWidth.value = Math.max(width - 20, 1);
     });
   };
 
@@ -106,21 +129,22 @@ export function ScoreSlider({
       {...panResponder.panHandlers}
     >
       <View pointerEvents="none" style={[styles.track, { backgroundColor: trackColor }]}>
-        <View
+        <Animated.View
           style={[
             styles.fill,
-            { width: `${value * 10}%`, backgroundColor: accentColor },
+            { backgroundColor: accentColor },
+            fillStyle,
           ]}
         />
-        <View
+        <Animated.View
           style={[
             styles.thumb,
             {
-              left: `${value * 10}%`,
               borderColor: accentColor,
               backgroundColor: thumbColor,
               shadowColor,
             },
+            thumbStyle,
           ]}
         />
       </View>

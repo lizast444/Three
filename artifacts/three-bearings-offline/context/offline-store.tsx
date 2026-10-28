@@ -9,7 +9,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import type { Lang } from '@/data/translations';
+import { LIBRARY_QUESTIONS_I18N, type Lang } from '@/data/translations';
 import { CATEGORIES, NEEDS, type CategoryId, type NeedId } from '@/constants/needs';
 
 const STORAGE_KEY = 'three-bearings.local.v1';
@@ -205,6 +205,144 @@ function parseStoredState(raw: string): OfflineState {
   return parseState(JSON.parse(raw) as unknown);
 }
 
+function parseLegacyWebBackup(backup: Record<string, unknown>): OfflineState {
+  if (!Array.isArray(backup.tb_days)) {
+    throw new Error('The web backup does not contain a valid day list.');
+  }
+
+  const language: Lang = backup.tb_lang === 'en' ? 'en' : 'ru';
+  const theme: ThemeMode = backup.tb_theme === 'dark' ? 'dark' : 'light';
+  const questionIndexes = Object.fromEntries(
+    NEEDS.map((need) => {
+      const rawIndex = backup[`tb_q_${need}`];
+      const index = typeof rawIndex === 'number' ? rawIndex : Number(rawIndex ?? 0);
+      return [need, Number.isSafeInteger(index) && index >= 0 ? index : 0];
+    }),
+  ) as Record<NeedId, number>;
+  const days: Record<string, DailyEntry> = {};
+
+  const parseLegacyAnswers = (
+    rawDay: Record<string, unknown>,
+    need: NeedId,
+  ): ReflectionAnswer[] => {
+    const directAnswers = rawDay[`${need}_answers`];
+    if (Array.isArray(directAnswers) && directAnswers.length > 0) {
+      if (
+        !directAnswers.every(
+          (answer) =>
+            isRecord(answer) &&
+            typeof answer.question === 'string' &&
+            typeof answer.answer === 'string',
+        )
+      ) {
+        throw new Error('The web backup contains an invalid answer.');
+      }
+      return directAnswers.map((answer) => ({
+        question: (answer as Record<string, string>).question,
+        answer: (answer as Record<string, string>).answer,
+      }));
+    }
+    return [];
+  };
+
+  const parseLegacyScore = (rawDay: Record<string, unknown>, key: string) => {
+    const rawScore = rawDay[key];
+    if (rawScore === undefined || rawScore === null || rawScore === '') return 5;
+    const score = typeof rawScore === 'number' ? rawScore : Number(rawScore);
+    if (!Number.isInteger(score) || score < 0 || score > 10) {
+      throw new Error('The web backup contains an invalid score.');
+    }
+    return score;
+  };
+
+  for (const value of backup.tb_days) {
+    if (!isRecord(value) || typeof value.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value.date)) {
+      throw new Error('The web backup contains an invalid day.');
+    }
+
+    const date = value.date;
+    const answers: Partial<Record<NeedId, ReflectionAnswer[]>> = {};
+    for (const need of NEEDS) {
+      const needAnswers = parseLegacyAnswers(value, need);
+      if (needAnswers.length) answers[need] = needAnswers;
+    }
+
+    const rawActions = Array.isArray(value.micro_actions) ? value.micro_actions : [];
+    const microActions: MicroAction[] = rawActions.flatMap((action) =>
+      isRecord(action) && isNeedId(action.sphere) && typeof action.action === 'string'
+        ? [{ sphere: action.sphere, action: action.action }]
+        : [],
+    );
+    if (
+      microActions.length === 0 &&
+      isNeedId(value.micro_action_sphere) &&
+      typeof value.micro_action === 'string' &&
+      value.micro_action
+    ) {
+      microActions.push({
+        sphere: value.micro_action_sphere,
+        action: value.micro_action,
+      });
+    }
+
+    const noteTags = Array.isArray(value.note_tags)
+      ? value.note_tags.filter(isNeedId)
+      : [];
+    days[date] = {
+      date,
+      scores: {
+        autonomy: parseLegacyScore(value, 'autonomy_score'),
+        competence: parseLegacyScore(value, 'competence_score'),
+        relatedness: parseLegacyScore(value, 'relatedness_score'),
+      },
+      answers,
+      note: typeof value.note === 'string' ? value.note : '',
+      noteTags,
+      microActions,
+      yesterdayReview:
+        typeof value.yesterday_review === 'string' ? value.yesterday_review : '',
+    };
+  }
+
+  const libraryNotes: LibraryNote[] = [];
+  for (const [key, rawAnswers] of Object.entries(backup)) {
+    const match = /^tb_deep_(\d{4}-\d{2}-\d{2})_(autonomy|competence|relatedness)$/.exec(key);
+    if (!match || !isRecord(rawAnswers)) continue;
+    const [, date, rawNeed] = match;
+    if (!isNeedId(rawNeed)) continue;
+    for (const [rawIndex, answer] of Object.entries(rawAnswers)) {
+      const questionIndex = Number(rawIndex);
+      if (!Number.isSafeInteger(questionIndex) || questionIndex < 0 || typeof answer !== 'string' || !answer.trim()) {
+        continue;
+      }
+      const question =
+        LIBRARY_QUESTIONS_I18N[language][rawNeed][questionIndex]?.question ??
+        (language === 'ru'
+          ? `Вопрос из веб-версии №${questionIndex + 1}`
+          : `Web version question #${questionIndex + 1}`);
+      libraryNotes.push({
+        id: `web-deep-${date}-${rawNeed}-${questionIndex}`,
+        category: rawNeed,
+        question,
+        content: answer,
+        createdAt: `${date}T12:00:00.000Z`,
+      });
+    }
+  }
+
+  return parseState({
+    version: 1,
+    settings: {
+      language,
+      theme,
+      questionIndexes,
+      ideaIndexes: { autonomy: 0, competence: 0, relatedness: 0 },
+    },
+    days,
+    libraryNotes,
+  });
+}
+
 export function parseBackupFile(raw: string): OfflineState {
   let parsed: unknown;
   try {
@@ -227,6 +365,10 @@ export function parseBackupFile(raw: string): OfflineState {
       throw new Error('This file is not a Three Bearings backup.');
     }
     return parseState(parsed.data);
+  }
+
+  if ('tb_days' in parsed) {
+    return parseLegacyWebBackup(parsed);
   }
 
   return parseState(parsed);

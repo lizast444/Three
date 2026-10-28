@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeOutUp } from 'react-native-reanimated';
 import { ScoreSlider } from '@/components/ScoreSlider';
 import { NEEDS, NeedId } from '@/constants/needs';
 import {
@@ -77,7 +77,6 @@ export default function CheckinScreen() {
         ? {
             today: 'Сегодня',
             scale: 'От совсем не ощущаю до полностью',
-            yourAnswer: 'Ваш ответ',
             earlierAnswers: 'Ранее записанные ответы',
             yesterday: 'Что сработало вчера?',
             planned: 'Вчера вы выбрали:',
@@ -95,7 +94,6 @@ export default function CheckinScreen() {
         : {
             today: 'Today',
             scale: 'From not at all to fully',
-            yourAnswer: 'Your answer',
             earlierAnswers: 'Earlier answers',
             yesterday: 'What worked yesterday?',
             planned: 'Yesterday you chose:',
@@ -268,17 +266,14 @@ export default function CheckinScreen() {
             >
               “{question}”
             </Animated.Text>
-            <View style={[styles.questionBox, { backgroundColor: palette.warmSurface }]}>
-              <Text style={[styles.smallLabel, { color: palette.mutedForeground }]}>
-                {copy.yourAnswer}
-              </Text>
+            <View style={styles.questionBox}>
               <AppInput
                 testID={`answer-${need}`}
                 multiline
                 value={currentAnswer}
                 onChangeText={(value) => setAnswer(need, question, value)}
                 placeholder={t.checkin_answer_placeholder}
-                style={styles.answerInput}
+                style={[styles.answerInput, { backgroundColor: palette.card }]}
               />
               {previousAnswers.length > 0 ? (
                 <View style={styles.previousAnswers}>
@@ -301,9 +296,14 @@ export default function CheckinScreen() {
                 <Text style={[styles.scoreEndLabel, { color: palette.mutedForeground }]}>
                   {language === 'ru' ? 'СОВСЕМ НЕТ' : 'NOT AT ALL'}
                 </Text>
-                <Text style={[styles.scoreValue, { color: tint }]}>
+                <Animated.Text
+                  key={entry.scores[need]}
+                  entering={FadeInDown.duration(140)}
+                  exiting={FadeOutUp.duration(100)}
+                  style={[styles.scoreValue, { color: tint }]}
+                >
                   {entry.scores[need]}
-                </Text>
+                </Animated.Text>
                 <Text style={[styles.scoreEndLabel, { color: palette.mutedForeground }]}>
                   {language === 'ru' ? 'ПОЛНОСТЬЮ' : 'FULLY'}
                 </Text>
@@ -354,7 +354,7 @@ export default function CheckinScreen() {
             update((current) => ({ ...current, yesterdayReview: value }))
           }
           placeholder={t.checkin_yesterday_placeholder}
-          style={styles.noteInput}
+          style={[styles.noteInput, { backgroundColor: palette.card }]}
         />
       </Card>
 
@@ -366,7 +366,7 @@ export default function CheckinScreen() {
           value={entry.note}
           onChangeText={(value) => update((current) => ({ ...current, note: value }))}
           placeholder={t.checkin_note_placeholder}
-          style={styles.noteInput}
+          style={[styles.noteInput, { backgroundColor: palette.card }]}
         />
         <View style={styles.tagBlock}>
           <Text style={[styles.smallLabel, { color: palette.mutedForeground }]}>
@@ -525,7 +525,7 @@ export default function CheckinScreen() {
                         placeholder={copy.ownActionPlaceholder}
                         returnKeyType="done"
                         testID={`custom-action-${need}`}
-                        style={styles.customActionInput}
+                        style={[styles.customActionInput, { backgroundColor: palette.card }]}
                       />
                       <AppButton
                         compact
@@ -582,7 +582,7 @@ const styles = StyleSheet.create({
   scoreBlock: { gap: 12, paddingTop: 1 },
   scoreLabels: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   scoreEndLabel: { fontSize: 10, fontWeight: '600', letterSpacing: 0.65 },
-  questionBox: { gap: 9, padding: 14, borderRadius: 16 },
+  questionBox: { gap: 9 },
   smallLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.7, textTransform: 'uppercase' },
   question: { fontFamily: 'Lora_400Regular_Italic', fontSize: 17, lineHeight: 26 },
   answerInput: { minHeight: 96 },

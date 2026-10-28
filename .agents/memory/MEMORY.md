@@ -1,2 +1,3 @@
 - [Offline-only product scope](offline-product-scope.md) — Keep Three Bearings user data on-device; do not add server sync.
 - [Expo package maturity gate](expo-package-maturity.md) — If the registry blocks a fresh SDK patch, use an earlier same-SDK release rather than bypassing the release-age gate.
+- [Three Bearings primary accent](three-bearings-primary-accent.md) — Use calm sage as the brand accent while keeping the three need colors distinct.

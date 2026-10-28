@@ -144,7 +144,8 @@ export default function SettingsScreen() {
           exportComplete: 'Файл резервной копии готов.',
           exportError: 'Не удалось создать файл резервной копии.',
           importReady: 'Файл проверен. Просмотрите данные перед восстановлением.',
-          importError: 'Не удалось прочитать файл. Выберите сохранённую JSON-копию Three Bearings.',
+          importReadError: 'Не удалось открыть файл. Выберите его ещё раз через кнопку «Импортировать».',
+          importError: 'Файл открыт, но его формат не распознан. Поддерживаются JSON-копии Expo и экспорт веб-версии Three Bearings.',
           importWarning: 'Восстановление полностью заменит текущие записи, ответы, заметки и настройки.',
           replace: 'Заменить данные',
           importComplete: 'Резервная копия восстановлена на этом устройстве.',
@@ -205,7 +206,8 @@ export default function SettingsScreen() {
           exportComplete: 'Backup file is ready.',
           exportError: 'Could not create a backup file.',
           importReady: 'The file is valid. Review it before restoring.',
-          importError: 'Could not read the file. Choose a saved Three Bearings JSON backup.',
+          importReadError: 'Could not open the file. Select it again using Import data.',
+          importError: 'The file opened, but its format was not recognized. Three Bearings Expo backups and web exports are supported.',
           importWarning: 'Restoring will replace current entries, answers, notes, and settings.',
           replace: 'Replace data',
           importComplete: 'Backup restored on this device.',
@@ -319,11 +321,22 @@ export default function SettingsScreen() {
       if (result.canceled) return;
       const asset = result.assets?.[0];
       if (!asset) throw new Error('No file was selected.');
-      const contents = await readPickedBackup(asset);
-      setPendingImport(parseBackupFile(contents));
-      setNotice(copy.importReady);
+      let contents: string;
+      try {
+        contents = await readPickedBackup(asset);
+      } catch {
+        setNotice(copy.importReadError);
+        return;
+      }
+
+      try {
+        setPendingImport(parseBackupFile(contents));
+        setNotice(copy.importReady);
+      } catch {
+        setNotice(copy.importError);
+      }
     } catch {
-      setNotice(copy.importError);
+      setNotice(copy.importReadError);
     } finally {
       setBusy(false);
     }
@@ -347,13 +360,6 @@ export default function SettingsScreen() {
   return (
     <Screen title={t.settings_title} subtitle={t.settings_subtitle}>
       <StorageBanner message={saveError ? (language === 'ru' ? 'Не удалось сохранить настройки. Проверьте свободное место.' : 'Could not save settings. Check storage space.') : null} />
-      <Card style={styles.privacyCard}>
-        <SettingsHeading icon="shield" title={copy.localOnly} />
-        <BodyText>{copy.privacy}</BodyText>
-        <Text style={[styles.cacheNote, { color: palette.mutedForeground }]}>{copy.cache}</Text>
-        <Text style={[styles.noCloud, { color: palette.autonomy }]}>{copy.noCloud}</Text>
-      </Card>
-
       <Card style={styles.aboutCard}>
         <View style={styles.aboutEyebrowRow}>
           <Feather name="info" size={15} color={palette.mutedForeground} />
@@ -537,6 +543,13 @@ export default function SettingsScreen() {
       <Text style={[styles.version, { color: palette.mutedForeground }]}>
         Three Bearings · Offline
       </Text>
+
+      <Card style={styles.privacyCard}>
+        <SettingsHeading icon="shield" title={copy.localOnly} />
+        <BodyText>{copy.privacy}</BodyText>
+        <Text style={[styles.cacheNote, { color: palette.mutedForeground }]}>{copy.cache}</Text>
+        <Text style={[styles.noCloud, { color: palette.autonomy }]}>{copy.noCloud}</Text>
+      </Card>
     </Screen>
   );
 }
