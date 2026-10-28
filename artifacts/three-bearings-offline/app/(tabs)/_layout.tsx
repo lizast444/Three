@@ -1,6 +1,6 @@
 import React from 'react';
-import { Platform, View, StyleSheet } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { Platform, View, StyleSheet, useColorScheme } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,19 +9,23 @@ import { useOfflineStore } from '@/context/offline-store';
 import { useAppColors } from '@/hooks/useAppColors';
 
 const tabs = [
-  { name: 'index', key: 'nav_today', icon: 'sun' },
-  { name: 'library', key: 'nav_library', icon: 'book-open' },
-  { name: 'journal', key: 'nav_journal', icon: 'calendar' },
-  { name: 'analytics', key: 'nav_analytics', icon: 'bar-chart-2' },
-  { name: 'settings', key: 'nav_settings', icon: 'sliders' },
+  { name: 'index', key: 'nav_today', icon: 'checkmark-circle-outline', activeIcon: 'checkmark-circle' },
+  { name: 'library', key: 'nav_library', icon: 'book-outline', activeIcon: 'book' },
+  { name: 'journal', key: 'nav_journal', icon: 'calendar-outline', activeIcon: 'calendar' },
+  { name: 'analytics', key: 'nav_analytics', icon: 'stats-chart-outline', activeIcon: 'stats-chart' },
+  { name: 'settings', key: 'nav_settings', icon: 'options-outline', activeIcon: 'options' },
 ] as const;
 
 export default function TabLayout() {
   const palette = useAppColors();
   const insets = useSafeAreaInsets();
+  const systemScheme = useColorScheme();
   const { data } = useOfflineStore();
   const isIOS = Platform.OS === 'ios';
   const isWeb = Platform.OS === 'web';
+  const isDark =
+    data.settings.theme === 'dark' ||
+    (data.settings.theme === 'system' && systemScheme === 'dark');
   const labels = UI[data.settings.language];
   return (
     <Tabs
@@ -31,29 +35,49 @@ export default function TabLayout() {
         tabBarInactiveTintColor: palette.mutedForeground,
         tabBarStyle: {
           position: 'absolute',
-          backgroundColor: isIOS ? 'transparent' : palette.background,
-          borderTopWidth: isWeb ? 1 : StyleSheet.hairlineWidth,
-          borderTopColor: palette.border,
-          elevation: 0,
-          paddingBottom: isWeb ? 0 : insets.bottom,
-          height: isWeb ? 84 : 58 + insets.bottom,
+          left: 12,
+          right: 12,
+          bottom: Math.max(8, insets.bottom + 8),
+          height: 68,
+          paddingTop: 5,
+          paddingBottom: 1,
+          backgroundColor: 'transparent',
+          borderTopWidth: 0,
+          borderRadius: 25,
+          elevation: 9,
+          shadowColor: palette.foreground,
+          shadowOffset: { width: 0, height: 7 },
+          shadowOpacity: 0.12,
+          shadowRadius: 18,
         },
         tabBarBackground: () =>
           isIOS ? (
             <BlurView
-              intensity={85}
-              tint={data.settings.theme === 'dark' ? 'dark' : 'light'}
-              style={StyleSheet.absoluteFill}
+              intensity={60}
+              tint={isDark ? 'dark' : 'light'}
+              style={[
+                StyleSheet.absoluteFill,
+                styles.glassSurface,
+                {
+                  backgroundColor: `${palette.card}70`,
+                  borderColor: palette.border,
+                },
+              ]}
             />
-          ) : isWeb ? (
+          ) : (
             <View
               style={[
                 StyleSheet.absoluteFill,
-                { backgroundColor: palette.background },
+                styles.glassSurface,
+                {
+                  backgroundColor: `${palette.card}E8`,
+                  borderColor: palette.border,
+                },
               ]}
             />
-          ) : null,
-        tabBarLabelStyle: { fontFamily: 'DMSans_500Medium', fontSize: 10, marginBottom: 2 },
+          ),
+        tabBarItemStyle: styles.tabItem,
+        tabBarLabelStyle: styles.tabLabel,
       }}
     >
       {tabs.map((tab) => (
@@ -62,12 +86,20 @@ export default function TabLayout() {
           name={tab.name}
           options={{
             title: labels[tab.key],
-            tabBarIcon: ({ focused, size }) => (
-              <Feather
-                name={tab.icon}
-                color={focused ? palette.primary : palette.mutedForeground}
-                size={size ?? 20}
-              />
+            tabBarIcon: ({ focused, color }) => (
+              <View style={styles.tabIconWrap}>
+                <View
+                  style={[
+                    styles.activeMarker,
+                    { backgroundColor: focused ? palette.primary : 'transparent' },
+                  ]}
+                />
+                <Ionicons
+                  name={focused ? tab.activeIcon : tab.icon}
+                  color={focused ? palette.primary : palette.mutedForeground}
+                  size={20}
+                />
+              </View>
             ),
           }}
         />
@@ -75,3 +107,32 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  glassSurface: {
+    borderRadius: 25,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
+  },
+  tabItem: { paddingTop: 0, paddingBottom: 0 },
+  tabLabel: {
+    fontFamily: 'DMSans_500Medium',
+    fontSize: 10,
+    lineHeight: 13,
+    marginTop: 1,
+    marginBottom: 0,
+  },
+  tabIconWrap: {
+    height: 27,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingTop: 4,
+  },
+  activeMarker: {
+    position: 'absolute',
+    top: 0,
+    width: 15,
+    height: 2,
+    borderRadius: 1,
+  },
+});

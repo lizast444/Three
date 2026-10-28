@@ -376,16 +376,42 @@ export default function CheckinScreen() {
           <Text style={[styles.smallLabel, { color: palette.mutedForeground }]}>
             {copy.tags}
           </Text>
-          <View style={styles.wrapRow}>
-            {NEEDS.map((need) => (
-              <AppButton
-                key={need}
-                compact
-                selected={entry.noteTags.includes(need)}
-                label={t[`sphere_${need}`]}
-                onPress={() => toggleTag(need)}
-              />
-            ))}
+            <View style={styles.wrapRow}>
+              {NEEDS.map((need) => {
+                const selected = entry.noteTags.includes(need);
+                return (
+                  <Pressable
+                    key={need}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={t[`sphere_${need}`]}
+                    testID={`note-tag-${need}`}
+                    onPress={() => toggleTag(need)}
+                    style={({ pressed }) => [
+                      styles.noteTag,
+                      {
+                        backgroundColor: selected ? palette[need] : palette[`${need}Soft`],
+                        borderColor: selected ? palette[need] : `${palette[need]}66`,
+                        opacity: pressed ? 0.76 : 1,
+                      },
+                    ]}
+                  >
+                    <Feather
+                      name={needIcons[need]}
+                      size={14}
+                      color={selected ? palette.primaryForeground : palette[need]}
+                    />
+                    <Text
+                      style={[
+                        styles.noteTagText,
+                        { color: selected ? palette.primaryForeground : palette[need] },
+                      ]}
+                    >
+                      {t[`sphere_${need}`]}
+                    </Text>
+                  </Pressable>
+                );
+              })}
           </View>
         </View>
       </Card>
@@ -571,6 +597,17 @@ const styles = StyleSheet.create({
   plannedItem: { fontSize: 13, lineHeight: 20 },
   noteInput: { minHeight: 110 },
   tagBlock: { gap: 9 },
+  noteTag: {
+    minHeight: 36,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderRadius: 15,
+  },
+  noteTagText: { fontFamily: 'DMSans_600SemiBold', fontSize: 12 },
   wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   ideaBlock: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 20, padding: 14, gap: 10 },
   ideaHeading: { flexDirection: 'row', alignItems: 'center', gap: 9 },
