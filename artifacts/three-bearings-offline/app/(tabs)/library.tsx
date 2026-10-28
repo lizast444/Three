@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { CATEGORIES, CategoryId } from '@/constants/needs';
 import { useOfflineStore } from '@/context/offline-store';
 import {
@@ -19,6 +18,7 @@ import {
   StorageBanner,
 } from '@/components/primitives';
 import { useAppColors } from '@/hooks/useAppColors';
+import { notifySuccess } from '@/utils/haptics';
 
 const categoryColorKey = (category: CategoryId) =>
   category === 'universal' ? 'primary' : category;
@@ -77,7 +77,7 @@ export default function LibraryScreen() {
     });
     setDraft('');
     setAnswering(null);
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    notifySuccess();
   };
 
   return (

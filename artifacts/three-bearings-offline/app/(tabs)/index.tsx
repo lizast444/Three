@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { NEEDS, NeedId } from '@/constants/needs';
 import {
   DailyEntry,
@@ -24,6 +23,7 @@ import {
   StorageBanner,
 } from '@/components/primitives';
 import { useAppColors } from '@/hooks/useAppColors';
+import { notifySuccess } from '@/utils/haptics';
 
 const formatDate = (date: string, language: 'ru' | 'en') => {
   const parsed = new Date(`${date}T12:00:00`);
@@ -425,7 +425,7 @@ export default function CheckinScreen() {
           onPress={() => {
             update((current) => ({ ...current }));
             setSavedLabel(true);
-            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            notifySuccess();
             setTimeout(() => setSavedLabel(false), 2400);
           }}
         />
