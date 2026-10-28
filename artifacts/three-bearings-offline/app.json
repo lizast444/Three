@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "Three Bearings Offline",
+    "slug": "three-bearings-offline",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "three-bearings-offline",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.threebearings.offline"
+    },
+    "android": {
+      "package": "com.threebearings.offline",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#fcfaf8"
+      }
+    },
+    "splash": {
+      "backgroundColor": "#fcfaf8",
+      "image": "./assets/images/icon.png",
+      "resizeMode": "contain"
+    },
+    "web": {
+      "favicon": "./assets/images/icon.png",
+      "output": "static"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

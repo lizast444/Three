@@ -1,5 +1,5 @@
 kind = "web"
-previewPath = "/"
+previewPath = "/legacy-three-bearings/"
 title = "Three Bearings"
 version = "1.0.0"
 id = "artifacts/three-bearings"
@@ -8,24 +8,3 @@ router = "path"
 [[integratedSkills]]
 name = "react-vite"
 version = "1.0.0"
-
-[[services]]
-name = "web"
-paths = [ "/" ]
-localPort = 19452
-
-[services.development]
-run = "pnpm --filter @workspace/three-bearings run dev"
-
-[services.production]
-build = [ "pnpm", "--filter", "@workspace/three-bearings", "run", "build" ]
-publicDir = "artifacts/three-bearings/dist/public"
-serve = "static"
-
-[[services.production.rewrites]]
-from = "/*"
-to = "/index.html"
-
-[services.env]
-PORT = "19452"
-BASE_PATH = "/"

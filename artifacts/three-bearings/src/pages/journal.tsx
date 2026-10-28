@@ -410,7 +410,7 @@ export default function JournalPage() {
 
   // API data (for stats and legacy support)
   const { data: checkinsData } = useGetCheckins({ limit: 500 });
-  const apiCheckins = checkinsData?.checkins ?? [];
+  const apiCheckins = checkinsData ?? [];
 
   const localDayMap = useMemo(() => {
     const m: Record<string, LocalDay> = {};

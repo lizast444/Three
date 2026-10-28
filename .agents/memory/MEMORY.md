@@ -1,0 +1,1 @@
+- [Offline-only product scope](offline-product-scope.md) — Keep Three Bearings user data on-device; do not add server sync.
